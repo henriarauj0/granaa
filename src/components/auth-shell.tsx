@@ -14,7 +14,7 @@ export function AuthShell({
   children,
   redirectIfLoggedIn = true,
 }: {
-  title: string;
+  title: ReactNode;
   subtitle?: string;
   children: ReactNode;
   redirectIfLoggedIn?: boolean;
@@ -33,7 +33,7 @@ export function AuthShell({
       <div className="mb-10">
         <Logo />
       </div>
-      <h1 className="text-3xl font-bold tracking-tight">{title}</h1>
+      <h1 className="text-3xl leading-tight font-bold tracking-tight text-balance">{title}</h1>
       {subtitle ? <p className="mt-2 text-ink-2">{subtitle}</p> : null}
       <div className="mt-8">{children}</div>
     </main>

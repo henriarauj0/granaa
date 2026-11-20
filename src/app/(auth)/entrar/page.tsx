@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { AuthShell } from "@/components/auth-shell";
+import { FinancePhrase } from "@/components/finance-phrase";
 import { Button, ErrorBox, Field } from "@/components/ui";
 import { authErrorMessage, getSupabase } from "@/lib/supabase";
 
@@ -25,7 +26,7 @@ export default function EntrarPage() {
   }
 
   return (
-    <AuthShell title="Entrar" subtitle="Que bom te ver de novo.">
+    <AuthShell title={<FinancePhrase />} subtitle="Entre na sua conta.">
       <form onSubmit={submit} className="space-y-4">
         <Field label="E-mail">
           {(id) => (
