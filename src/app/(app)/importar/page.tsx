@@ -467,7 +467,7 @@ export default function ImportarPage() {
                       <div className="grid grid-cols-2 gap-2">
                         <select
                           aria-label={`Ação para ${r.description}`}
-                          className="field min-h-10 text-sm"
+                          className="field min-h-10"
                           value={r.action}
                           onChange={(e) => setRowAction(i, e.target.value)}
                         >
@@ -485,7 +485,7 @@ export default function ImportarPage() {
                         {r.action === "expense" || r.action === "income" ? (
                           <select
                             aria-label={`Categoria de ${r.description}`}
-                            className="field min-h-10 text-sm"
+                            className="field min-h-10"
                             value={r.categoryId}
                             onChange={(e) => setRowCategory(i, e.target.value)}
                           >
@@ -543,7 +543,7 @@ function ColumnSelect({ label, headers, value, onChange }: { label: string; head
   return (
     <Field label={label}>
       {(id) => (
-        <select id={id} className="field text-sm" value={value} onChange={(e) => onChange(Number(e.target.value))}>
+        <select id={id} className="field" value={value} onChange={(e) => onChange(Number(e.target.value))}>
           <option value={-1}>—</option>
           {headers.map((h, i) => (h ? <option key={i} value={i}>{h}</option> : null))}
         </select>

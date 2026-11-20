@@ -74,14 +74,14 @@ export default function LancamentosPage() {
           />
         </div>
         <div className="grid grid-cols-3 gap-2">
-          <select className="field text-sm" aria-label="Tipo" value={kind} onChange={(e) => setKind(e.target.value as KindFilter)}>
+          <select className="field pl-3 pr-7" aria-label="Tipo" value={kind} onChange={(e) => setKind(e.target.value as KindFilter)}>
             <option value="all">Todos</option>
             <option value="expense">Despesas</option>
             <option value="income">Receitas</option>
             <option value="other">Transf./faturas</option>
           </select>
-          <select className="field text-sm" aria-label="Conta ou cartão" value={source} onChange={(e) => setSource(e.target.value)}>
-            <option value="">Contas e cartões</option>
+          <select className="field pl-3 pr-7" aria-label="Conta ou cartão" value={source} onChange={(e) => setSource(e.target.value)}>
+            <option value="">Contas</option>
             {accounts.map((a) => (
               <option key={a.id} value={`a:${a.id}`}>
                 {a.name}
@@ -93,8 +93,8 @@ export default function LancamentosPage() {
               </option>
             ))}
           </select>
-          <select className="field text-sm" aria-label="Categoria" value={category} onChange={(e) => setCategory(e.target.value)}>
-            <option value="">Categorias</option>
+          <select className="field pl-3 pr-7" aria-label="Categoria" value={category} onChange={(e) => setCategory(e.target.value)}>
+            <option value="">Categoria</option>
             <option value="none">Sem categoria</option>
             {categories.map((c) => (
               <option key={c.id} value={c.id}>

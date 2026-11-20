@@ -124,7 +124,7 @@ export function MoneyInput({
       </span>
       <input
         id={id}
-        className={`field num pl-11 ${large ? "min-h-16 text-2xl font-semibold" : ""}`}
+        className={`field num ${large ? "min-h-16 pl-14 text-2xl font-semibold" : "pl-11"}`}
         inputMode="decimal"
         autoComplete="off"
         autoFocus={autoFocus}
