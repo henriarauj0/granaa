@@ -33,6 +33,8 @@ Regras de contabilização: compras no cartão contam como despesa na data da co
    - `NEXT_PUBLIC_SUPABASE_URL` = a Project URL
    - `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` = a Publishable key
 3. Clique em **Deploy** e anote o endereço gerado (por exemplo, `https://granaa.vercel.app`).
+4. Confira em **Settings → Environments → Production** se a branch de produção é a branch principal do repositório. Deploys de outras branches viram *Preview*: não atualizam o endereço definitivo e ficam protegidos por login da Vercel. O arquivo `vercel.json` já fixa o preset Next.js; se o endereço mostrar "Index of /", o projeto foi publicado como site estático e precisa de um novo deploy de produção.
+5. As variáveis `NEXT_PUBLIC_*` entram no app durante a compilação. Ao criá-las ou alterá-las, faça um novo deploy.
 
 ### 3. Ligar o Supabase ao endereço da Vercel
 
