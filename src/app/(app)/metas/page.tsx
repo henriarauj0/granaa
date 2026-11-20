@@ -22,7 +22,7 @@ export default function MetasPage() {
     <>
       <PageHeader
         title="Metas"
-        subtitle={goals.length ? `${formatMoney(totalSaved)} guardados de ${formatMoney(totalTarget)}` : undefined}
+        subtitle={goals.length ? `${formatMoney(totalSaved)} acumulados de ${formatMoney(totalTarget)}` : undefined}
         action={
           <IconButton label="Nova meta" onClick={() => setEditing("new")} className="bg-surface-2">
             <Plus className="size-5" />
@@ -35,7 +35,7 @@ export default function MetasPage() {
           <EmptyState
             icon={<Target className="size-6" />}
             title="Crie sua primeira meta"
-            text="Reserva de emergência, viagem, um carro novo... defina o valor-alvo e registre quanto já guardou."
+            text="Reserva de emergência, viagem, um carro novo... defina o valor-alvo e acompanhe quanto já acumulou, esteja o dinheiro em qualquer conta ou investimento."
             action={<Button onClick={() => setEditing("new")}>Nova meta</Button>}
           />
         </div>
@@ -73,16 +73,16 @@ export default function MetasPage() {
                   {done
                     ? "Meta atingida! 🎉"
                     : `${Math.floor(p * 100)}% · faltam ${formatMoney(g.target_amount - g.saved_amount)}${
-                        perMonth ? ` · guarde ${formatMoney(perMonth)}/mês para chegar no prazo` : ""
+                        perMonth ? ` · acumule ${formatMoney(perMonth)}/mês para chegar no prazo` : ""
                       }`}
                 </p>
 
                 <div className="mt-4 grid grid-cols-2 gap-2">
                   <Button variant="secondary" onClick={() => setMoving({ goal: g, mode: "remove" })} disabled={g.saved_amount <= 0}>
-                    <Minus className="size-4" /> Retirar
+                    <Minus className="size-4" /> Diminuir
                   </Button>
                   <Button onClick={() => setMoving({ goal: g, mode: "add" })}>
-                    <Plus className="size-4" /> Guardar
+                    <Plus className="size-4" /> Adicionar
                   </Button>
                 </div>
               </article>
@@ -94,7 +94,7 @@ export default function MetasPage() {
       <Sheet open={editing !== null} onClose={() => setEditing(null)} title={editing === "new" ? "Nova meta" : "Editar meta"}>
         {editing !== null ? <GoalForm goal={editing === "new" ? undefined : editing} onDone={() => setEditing(null)} /> : null}
       </Sheet>
-      <Sheet open={moving !== null} onClose={() => setMoving(null)} title={moving?.mode === "add" ? "Guardar dinheiro" : "Retirar dinheiro"}>
+      <Sheet open={moving !== null} onClose={() => setMoving(null)} title={moving?.mode === "add" ? "Adicionar ao acumulado" : "Diminuir do acumulado"}>
         {moving ? <MoveForm goal={moving.goal} mode={moving.mode} onDone={() => setMoving(null)} /> : null}
       </Sheet>
     </>
@@ -146,8 +146,8 @@ function GoalForm({ goal, onDone }: { goal?: Goal; onDone: () => void }) {
         {(id) => <input id={id} className="field" maxLength={60} placeholder="Ex.: Reserva de emergência" value={name} onChange={(e) => setName(e.target.value)} />}
       </Field>
       <Field label="Valor-alvo">{(id) => <MoneyInput id={id} value={target} onChange={setTarget} />}</Field>
-      <Field label="Já guardado">{(id) => <MoneyInput id={id} value={saved} onChange={setSaved} />}</Field>
-      <Field label="Prazo (opcional)" hint="Com prazo, mostramos quanto guardar por mês.">
+      <Field label="Valor já acumulado" hint="Some o que já existe para esta meta, em qualquer conta ou investimento.">{(id) => <MoneyInput id={id} value={saved} onChange={setSaved} />}</Field>
+      <Field label="Prazo (opcional)" hint="Com prazo, mostramos quanto acumular por mês.">
         {(id) => <input id={id} type="date" className="field" value={deadline} onChange={(e) => setDeadline(e.target.value)} />}
       </Field>
       <Field label="Cor">{() => <ColorPicker value={color} onChange={setColor} />}</Field>
@@ -173,7 +173,7 @@ function MoveForm({ goal, mode, onDone }: { goal: Goal; mode: "add" | "remove"; 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     if (!amount || amount <= 0) return setError("Informe um valor.");
-    if (mode === "remove" && amount > goal.saved_amount) return setError(`Você só tem ${formatMoney(goal.saved_amount)} nesta meta.`);
+    if (mode === "remove" && amount > goal.saved_amount) return setError(`O acumulado desta meta é ${formatMoney(goal.saved_amount)}.`);
     setBusy(true);
     try {
       await setGoalSaved(goal.id, goal.saved_amount + (mode === "add" ? amount : -amount));
@@ -190,12 +190,12 @@ function MoveForm({ goal, mode, onDone }: { goal: Goal; mode: "add" | "remove"; 
       <p className="text-sm text-ink-2">
         {goal.name}: {formatMoney(goal.saved_amount)} de {formatMoney(goal.target_amount)}.
       </p>
-      <Field label={mode === "add" ? "Quanto você guardou?" : "Quanto vai retirar?"}>
+      <Field label={mode === "add" ? "Quanto acumulou a mais?" : "Quanto diminuiu?"}>
         {(id) => <MoneyInput id={id} value={amount} onChange={setAmount} autoFocus large />}
       </Field>
       <ErrorBox>{error}</ErrorBox>
       <Button type="submit" loading={busy} className="w-full">
-        {mode === "add" ? "Guardar" : "Retirar"}
+        {mode === "add" ? "Adicionar" : "Diminuir"}
       </Button>
     </form>
   );

@@ -10,7 +10,7 @@ Aplicativo web pensado para o celular (pode ser instalado na tela inicial), feit
 - Contas (corrente, poupança, carteira, investimento) com saldo inicial e saldo atual calculado.
 - Lançamentos manuais de despesa, receita e transferência entre contas, com categoria, data e observação.
 - Cartões de crédito com dia de fechamento e de vencimento, compras parceladas em até 24 vezes, fatura por mês (aberta, fechada, vencida, paga), pagamento de fatura e limite disponível.
-- Metas com valor-alvo, prazo opcional e cálculo de quanto guardar por mês.
+- Metas com valor-alvo, prazo opcional e cálculo de quanto acumular por mês. A meta é um parâmetro de acompanhamento: o valor acumulado é informado pelo usuário e não movimenta nenhuma conta, pois o dinheiro pode estar distribuído em várias contas e investimentos.
 - Importação de extrato em OFX ou CSV, com prévia, sugestão automática de categoria, bloqueio de duplicados e aviso de linhas que parecem pagamento de fatura.
 - Painel inicial com saldo, receitas e despesas do mês, faturas, gastos por categoria e metas.
 - Modo claro e escuro automáticos.

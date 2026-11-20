@@ -153,7 +153,7 @@ export default function InicioPage() {
             <EmptyState
               icon={<Target className="size-6" />}
               title="Nenhuma meta ainda"
-              text="Defina um valor-alvo e acompanhe quanto já guardou."
+              text="Defina um valor-alvo e acompanhe quanto já acumulou."
               action={<Link href="/metas" className="font-semibold text-brand">Criar meta</Link>}
             />
           </div>
