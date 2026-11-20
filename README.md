@@ -23,7 +23,7 @@ Regras de contabilização: compras no cartão contam como despesa na data da co
 ### 1. Criar o banco no Supabase
 
 1. Crie uma conta gratuita em https://supabase.com e clique em **New project**. Escolha a região **South America (São Paulo)**.
-2. No projeto, abra **SQL Editor**, cole todo o conteúdo do arquivo `supabase/migrations/20261120000000_schema_inicial.sql` e clique em **Run**.
+2. No projeto, abra **SQL Editor** e rode, um de cada vez e nesta ordem, o conteúdo de cada arquivo da pasta `supabase/migrations/` (hoje, `20261120000000_schema_inicial.sql` e depois `20261120010000_categorias_extras.sql`), clicando em **Run** após colar cada um.
 3. Abra **Project Settings → API Keys** e copie a **Project URL** e a **Publishable key** (`sb_publishable_...`). A chave `anon` antiga também funciona.
 
 ### 2. Publicar na Vercel
