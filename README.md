@@ -11,7 +11,8 @@ Aplicativo web pensado para o celular (pode ser instalado na tela inicial), feit
 - Lançamentos manuais de despesa, receita e transferência entre contas, com categoria, data e observação.
 - Cartões de crédito com dia de fechamento e de vencimento, compras parceladas em até 24 vezes, fatura por mês (aberta, fechada, vencida, paga), pagamento de fatura e limite disponível.
 - Metas com valor-alvo, prazo opcional e cálculo de quanto acumular por mês. A meta é um parâmetro de acompanhamento: o valor acumulado é informado pelo usuário e não movimenta nenhuma conta, pois o dinheiro pode estar distribuído em várias contas e investimentos.
-- Importação de extrato em OFX ou CSV, com prévia, sugestão automática de categoria, bloqueio de duplicados e aviso de linhas que parecem pagamento de fatura.
+- Importação de extrato em OFX, CSV ou Excel 97-2003 (.xls, como o do BTG Pactual), com prévia, sugestão de categoria (pelo histórico, por palavras-chave e pela categoria do próprio banco) e bloqueio de duplicados.
+- Na importação, Pix para o próprio nome, aplicações e resgates são reconhecidos como movimentação entre contas e podem virar transferência para outra conta sua; estornos e cancelamentos são pareados com a compra original e ficam de fora; ao escolher a categoria de uma linha, as demais da mesma origem recebem a mesma.
 - Painel inicial com saldo, receitas e despesas do mês, faturas, gastos por categoria e metas.
 - Modo claro e escuro automáticos.
 

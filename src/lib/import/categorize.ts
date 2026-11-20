@@ -77,3 +77,125 @@ export function importKey(
   if (row.externalId) return `${targetId}:fit:${row.externalId}`;
   return `${targetId}:${row.date}:${row.amount.toFixed(2)}:${normalizeDescription(row.description).slice(0, 60)}:${occurrence}`;
 }
+
+// ---------------------------------------------------------------------------
+// Categoria sugerida pelo banco
+// ---------------------------------------------------------------------------
+
+/** Nomes de categoria usados pelos bancos → categorias padrão do Granaa. */
+const BANK_ALIASES: Record<string, string> = {
+  supermercado: "Mercado",
+  mercado: "Mercado",
+  alimentacao: "Alimentação",
+  restaurante: "Alimentação",
+  restaurantes: "Alimentação",
+  transporte: "Transporte",
+  compras: "Compras",
+  vestuario: "Compras",
+  saude: "Saúde",
+  educacao: "Educação",
+  lazer: "Lazer",
+  "lazer e entretenimento": "Lazer",
+  entretenimento: "Lazer",
+  contas: "Contas da casa",
+  "contas e servicos": "Contas da casa",
+  servicos: "Contas da casa",
+  moradia: "Moradia",
+  tarifas: "Impostos e taxas",
+  impostos: "Impostos e taxas",
+  "impostos e taxas": "Impostos e taxas",
+  viagem: "Viagem",
+  viagens: "Viagem",
+  pets: "Pets",
+  assinaturas: "Assinaturas",
+  presentes: "Presentes",
+  salario: "Salário",
+  "cuidados pessoais": "Cuidados pessoais",
+  "beleza e cuidados pessoais": "Cuidados pessoais",
+  "credito e financiamento": "Empréstimos e financiamentos",
+  emprestimos: "Empréstimos e financiamentos",
+  financiamento: "Empréstimos e financiamentos",
+  saque: "Saques",
+  saques: "Saques",
+  doacoes: "Doações",
+  doacao: "Doações",
+};
+
+export function bankCategoryToId(bankCategory: string | undefined, kind: CategoryKind, categories: Category[]): string | null {
+  if (!bankCategory) return null;
+  const n = normalizeDescription(bankCategory);
+  const own = categories.filter((c) => c.kind === kind);
+  const exact = own.find((c) => normalizeDescription(c.name) === n);
+  if (exact) return exact.id;
+  const alias = BANK_ALIASES[n];
+  return alias ? own.find((c) => c.name === alias)?.id ?? null : null;
+}
+
+// ---------------------------------------------------------------------------
+// Transferências entre contas da própria pessoa
+// ---------------------------------------------------------------------------
+
+const NAME_STOPWORDS = new Set(["de", "da", "do", "das", "dos", "e"]);
+const COMPANY_WORDS = /\b(sociedade|advocacia|advogados|ltda|eireli|epp|mei|me|s a|sa|associados|servicos|comercio|instituicao|pagamento|banco|engenharia)\b/;
+
+/**
+ * Indica movimentação entre contas da própria pessoa: Pix para o próprio nome
+ * (inclusive abreviado, como "Fulano A Silva") e aplicações/resgates.
+ * Empresas no nome da pessoa (ex.: sociedade individual) não contam.
+ */
+export function isSelfTransfer(
+  row: { description: string; counterparty?: string; operation?: string },
+  fullName: string | null | undefined,
+): boolean {
+  const text = normalizeDescription(`${row.operation ?? ""} ${row.description}`);
+  if (/\b(aplicacao|resgate)\b/.test(text) && !/\b(compra|pix)\b/.test(text)) return true;
+  if (!fullName) return false;
+  const tokens = normalizeDescription(fullName)
+    .split(" ")
+    .filter((t) => t.length > 1 && !NAME_STOPWORDS.has(t));
+  if (tokens.length < 2) return false;
+  const party = normalizeDescription(row.counterparty ?? row.description);
+  if (COMPANY_WORDS.test(party)) return false;
+  const words = new Set(party.split(" "));
+  return words.has(tokens[0]) && words.has(tokens[tokens.length - 1]);
+}
+
+// ---------------------------------------------------------------------------
+// Estornos, cancelamentos e devoluções
+// ---------------------------------------------------------------------------
+
+const REVERSAL = /\b(cancelamento|canc|estorno|estornado|devolucao|devolvido|reembolso)\b/;
+
+/**
+ * Encontra pares lançamento + estorno de mesmo valor e mesma contraparte
+ * (até 5 dias de diferença). Devolve os índices das duas pontas de cada par.
+ */
+export function findReversalPairs(
+  rows: Array<{ date: string; amount: number; description: string; counterparty?: string; operation?: string }>,
+): Set<number> {
+  const paired = new Set<number>();
+  const party = (r: (typeof rows)[number]) => normalizeDescription(r.counterparty ?? r.description).replace(REVERSAL, "").trim();
+  const days = (a: string, b: string) => Math.abs(Date.parse(a) - Date.parse(b)) / 86400000;
+  rows.forEach((r, i) => {
+    if (paired.has(i)) return;
+    if (!REVERSAL.test(normalizeDescription(`${r.operation ?? ""} ${r.description}`))) return;
+    let best = -1;
+    let bestDist = Infinity;
+    rows.forEach((o, j) => {
+      if (j === i || paired.has(j)) return;
+      if (Math.abs(o.amount + r.amount) > 0.004) return;
+      if (party(o) !== party(r)) return;
+      // prefere o lançamento original (anterior ao estorno) e o mais próximo
+      const dist = days(o.date, r.date) + Math.abs(i - j) / 1e6 + (j > i ? 0.5 : 0);
+      if (dist <= 5 && dist < bestDist) {
+        best = j;
+        bestDist = dist;
+      }
+    });
+    if (best >= 0) {
+      paired.add(i);
+      paired.add(best);
+    }
+  });
+  return paired;
+}

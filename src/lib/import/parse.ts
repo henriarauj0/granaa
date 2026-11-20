@@ -1,5 +1,6 @@
 import { isValidISODate, toISODate } from "../dates";
 import { parseMoney } from "../money";
+import { isXls, isZip, readXlsRows } from "./xls";
 
 /** Linha de extrato já interpretada. amount > 0 = entrada; amount < 0 = saída. */
 export interface StatementRow {
@@ -8,10 +9,16 @@ export interface StatementRow {
   amount: number;
   /** identificador único do banco (FITID no OFX), quando existir */
   externalId?: string;
+  /** tipo de operação informado pelo banco ("Pix enviado", "Cancelamento de compra"...) */
+  operation?: string;
+  /** contraparte, quando o banco separa operação e descrição */
+  counterparty?: string;
+  /** categoria sugerida pelo próprio banco */
+  bankCategory?: string;
 }
 
 export interface ParseResult {
-  format: "ofx" | "csv";
+  format: "ofx" | "csv" | "xls";
   rows: StatementRow[];
   warnings: string[];
   /** apenas CSV: colunas e linhas brutas, para mapeamento manual */
@@ -58,6 +65,12 @@ export function parseDate(input: string): string | null {
   }
   m = s.match(/^(\d{4})(\d{2})(\d{2})/);
   if (m) return valid(+m[1], +m[2], +m[3]);
+  // número de série de data do Excel (dias desde 30/12/1899), entre 1990 e 2100
+  m = s.match(/^(\d{5})(\.\d+)?$/);
+  if (m && +m[1] >= 32874 && +m[1] <= 73050) {
+    const d = new Date(Date.UTC(1899, 11, 30) + +m[1] * 86400000);
+    return toISODate(d.getUTCFullYear(), d.getUTCMonth() + 1, d.getUTCDate());
+  }
   return null;
 }
 
@@ -129,6 +142,10 @@ export interface CsvMapping {
   /** alternativa: colunas separadas de crédito e débito */
   credit: number | null;
   debit: number | null;
+  /** coluna com o tipo da operação (opcional) */
+  type?: number | null;
+  /** coluna com a categoria do banco (opcional) */
+  category?: number | null;
 }
 
 export function detectDelimiter(text: string): string {
@@ -179,34 +196,55 @@ export function splitCsvLine(line: string, delimiter: string): string[] {
 export function readCsv(text: string): CsvTable {
   const delimiter = detectDelimiter(text);
   const lines = text.split(/\r?\n/).filter((l) => l.trim() !== "");
-  const table = lines.map((l) => splitCsvLine(l, delimiter));
-  // o cabeçalho é a primeira linha que não contém data válida em nenhuma coluna
-  // e que é seguida por linhas com datas (alguns bancos colocam títulos antes)
-  let headerIndex = 0;
-  for (let i = 0; i < Math.min(table.length - 1, 15); i++) {
-    const hasDate = table[i].some((c) => parseDate(c));
-    const nextHasDate = table[i + 1].some((c) => parseDate(c));
-    if (!hasDate && nextHasDate && table[i].length >= 2) {
-      headerIndex = i;
-      break;
-    }
-  }
-  const headers = table[headerIndex] ?? [];
-  const width = headers.length;
-  const rows = table.slice(headerIndex + 1).filter((r) => r.length >= Math.min(width, 2));
-  return { headers, rows };
+  return tableFromRows(lines.map((l) => splitCsvLine(l, delimiter)));
 }
 
 const norm = (s: string) =>
   s
     .toLowerCase()
     .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
+    .replace(/[\u0300-\u036f]/g, "")
     .trim();
+
+const DATE_HEADER = [/^data$/, /^date$/, /data (do |de )?lancamento/, /^data/, /data/, /date/, /^dt/];
+const AMOUNT_HEADER = [/^valor$/, /^amount$/, /^value$/, /valor/, /quantia/, /amount/, /^credito/, /^debito/];
+
+/**
+ * Localiza o cabeçalho (bancos costumam pôr dados do cliente antes da tabela)
+ * e devolve as linhas seguintes. Linhas vazias são descartadas.
+ */
+export function tableFromRows(input: string[][]): CsvTable {
+  const table = input.map((r) => r.map((c) => (c ?? "").trim())).filter((r) => r.some((c) => c !== ""));
+  let headerIndex = -1;
+  // 1º: linha com nomes de coluna reconhecíveis (data + valor) e sem datas
+  for (let i = 0; i < Math.min(table.length, 40); i++) {
+    const cells = table[i].map(norm);
+    const hasDateHeader = cells.some((c) => c && DATE_HEADER.some((p) => p.test(c)));
+    const hasAmountHeader = cells.some((c) => c && AMOUNT_HEADER.some((p) => p.test(c)));
+    if (hasDateHeader && hasAmountHeader && !table[i].some((c) => parseDate(c))) {
+      headerIndex = i;
+      break;
+    }
+  }
+  // 2º: primeira linha sem data seguida de uma linha com data
+  if (headerIndex < 0) {
+    headerIndex = 0;
+    for (let i = 0; i < Math.min(table.length - 1, 15); i++) {
+      const hasDate = table[i].some((c) => parseDate(c));
+      const nextHasDate = table[i + 1].some((c) => parseDate(c));
+      if (!hasDate && nextHasDate && table[i].filter(Boolean).length >= 2) {
+        headerIndex = i;
+        break;
+      }
+    }
+  }
+  const headers = table[headerIndex] ?? [];
+  return { headers, rows: table.slice(headerIndex + 1) };
+}
 
 function findColumn(headers: string[], patterns: RegExp[], exclude: number[] = []): number {
   for (const p of patterns) {
-    const i = headers.findIndex((h, idx) => !exclude.includes(idx) && p.test(norm(h)));
+    const i = headers.findIndex((h, idx) => !exclude.includes(idx) && h.trim() !== "" && p.test(norm(h)));
     if (i >= 0) return i;
   }
   return -1;
@@ -214,28 +252,31 @@ function findColumn(headers: string[], patterns: RegExp[], exclude: number[] = [
 
 export function guessMapping(table: CsvTable): CsvMapping | null {
   const h = table.headers;
-  let date = findColumn(h, [/^data$/, /^date$/, /data (do )?lancamento/, /data/, /date/, /^dt/]);
+  let date = findColumn(h, DATE_HEADER);
   const description = findColumn(
     h,
-    [/^descricao$/, /^description$/, /^title$/, /historico/, /descri/, /estabelecimento/, /lancamento/, /memo/, /titulo/, /detalhe/],
+    [/^descricao$/, /^description$/, /^title$/, /^historico$/, /descri/, /historico/, /estabelecimento/, /memo/, /titulo/, /detalhe/, /lancamento/],
     [date],
   );
+  const type = findColumn(h, [/^transacao$/, /^tipo( de)?( transacao| lancamento| operacao)?$/, /^operacao$/, /^lancamento$/, /^historico$/], [date, description]);
+  const category = findColumn(h, [/^categoria$/, /^category$/], [date, description, type]);
   const credit = findColumn(h, [/^credito/, /^entrada/, /^credit/]);
   const debit = findColumn(h, [/^debito/, /^saida/, /^debit/]);
-  const amount = findColumn(h, [/^valor$/, /^amount$/, /^value$/, /valor/, /quantia/, /amount/], [date, description]);
+  const amount = findColumn(h, [/^valor$/, /^amount$/, /^value$/, /valor/, /quantia/, /amount/], [date, description, type, category]);
+  const extra = { type: type >= 0 ? type : null, category: category >= 0 ? category : null };
 
   if (date < 0) {
     // sem cabeçalho reconhecível: procura a coluna com mais datas
     date = mostLikely(table, (c) => parseDate(c) != null);
   }
   if (date < 0 || description < 0) return null;
-  if (amount >= 0) return { date, description, amount, credit: null, debit: null };
-  if (credit >= 0 && debit >= 0) return { date, description, amount: null, credit, debit };
+  if (amount >= 0) return { date, description, amount, credit: null, debit: null, ...extra };
+  if (credit >= 0 && debit >= 0) return { date, description, amount: null, credit, debit, ...extra };
   return null;
 }
 
 function mostLikely(table: CsvTable, test: (cell: string) => boolean): number {
-  const width = table.headers.length;
+  const width = Math.max(table.headers.length, ...table.rows.slice(0, 20).map((r) => r.length));
   let best = -1;
   let bestCount = 0;
   for (let c = 0; c < width; c++) {
@@ -248,12 +289,26 @@ function mostLikely(table: CsvTable, test: (cell: string) => boolean): number {
   return best;
 }
 
+/** "Pix enviado" + "Fulano" → "Pix enviado - Fulano"; compras mostram só o estabelecimento. */
+export function composeDescription(operation: string, counterparty: string): string {
+  const op = cleanDescription(operation);
+  const cp = cleanDescription(counterparty);
+  if (!op) return cp;
+  if (!cp) return op;
+  const nop = norm(op);
+  const ncp = norm(cp);
+  if (/^compra/.test(nop) || ncp.includes(nop)) return cp;
+  if (nop.includes(ncp)) return op;
+  return cleanDescription(`${op} - ${cp}`);
+}
+
 export function rowsFromCsv(table: CsvTable, mapping: CsvMapping): { rows: StatementRow[]; warnings: string[] } {
   const rows: StatementRow[] = [];
   const warnings: string[] = [];
   table.rows.forEach((r, i) => {
     const date = parseDate(r[mapping.date] ?? "");
-    const description = cleanDescription(r[mapping.description] ?? "") || "Sem descrição";
+    // sem data: cabeçalhos repetidos a cada página, rodapés e totais
+    if (!date) return;
     let amount: number | null = null;
     if (mapping.amount != null) amount = parseMoney(r[mapping.amount] ?? "");
     else if (mapping.credit != null && mapping.debit != null) {
@@ -261,32 +316,53 @@ export function rowsFromCsv(table: CsvTable, mapping: CsvMapping): { rows: State
       const d = parseMoney(r[mapping.debit] ?? "") ?? 0;
       amount = Math.abs(c) - Math.abs(d);
     }
-    if (!date || amount == null) {
-      const joined = r.join(" ").toLowerCase();
-      // linhas de saldo/total são comuns em extratos e podem ser ignoradas sem aviso
-      if (!/saldo|total/.test(joined)) warnings.push(`Linha ${i + 1} ignorada: ${r.join(" | ").slice(0, 80)}`);
+    const counterparty = cleanDescription(r[mapping.description] ?? "");
+    const operation = mapping.type != null ? cleanDescription(r[mapping.type] ?? "") : "";
+    if (/^saldo\b|saldo (anterior|do dia|diario|final)/.test(norm(counterparty || operation))) return;
+    if (amount == null) {
+      warnings.push(`Linha ${i + 1} ignorada (valor ilegível): ${r.filter(Boolean).join(" | ").slice(0, 80)}`);
       return;
     }
     if (amount === 0) return;
-    if (/^saldo\b|saldo (anterior|do dia|final)/i.test(description)) return;
-    rows.push({ date, description, amount });
+    const bankCategory = mapping.category != null ? cleanDescription(r[mapping.category] ?? "") : "";
+    rows.push({
+      date,
+      description: composeDescription(operation, counterparty) || "Sem descrição",
+      amount,
+      ...(operation ? { operation } : {}),
+      ...(counterparty && operation ? { counterparty } : {}),
+      ...(bankCategory ? { bankCategory } : {}),
+    });
   });
   return { rows, warnings };
 }
 
-export function parseCsv(text: string): ParseResult {
-  const table = readCsv(text);
+function parseTable(table: CsvTable, format: "csv" | "xls"): ParseResult {
   const mapping = guessMapping(table);
   if (!mapping) {
     return {
-      format: "csv",
+      format,
       rows: [],
       warnings: ["Não consegui identificar as colunas automaticamente. Indique abaixo quais são."],
       csv: table,
     };
   }
   const { rows, warnings } = rowsFromCsv(table, mapping);
-  return { format: "csv", rows, warnings, csv: table, mapping };
+  return { format, rows, warnings, csv: table, mapping };
+}
+
+export function parseCsv(text: string): ParseResult {
+  return parseTable(readCsv(text), "csv");
+}
+
+/** Lê o arquivo enviado: OFX, CSV ou Excel 97-2003 (.xls). */
+export function parseStatementFile(buffer: ArrayBuffer): ParseResult {
+  const bytes = new Uint8Array(buffer);
+  if (isXls(bytes)) return parseTable(tableFromRows(readXlsRows(buffer)), "xls");
+  if (isZip(bytes)) {
+    throw new Error("Arquivos .xlsx ainda não são aceitos. No Excel, salve como .xls (97-2003) ou CSV, ou baixe o extrato em OFX.");
+  }
+  return parseStatement(decodeFile(buffer));
 }
 
 export function parseStatement(text: string): ParseResult {
