@@ -15,7 +15,7 @@
   <img src="docs/telas/metas.png" width="230" alt="Metas de economia com progresso e valor mensal sugerido">
 </p>
 
-O Granaa é um aplicativo web que pode ser instalado na tela inicial do celular, no iPhone ou no Android, e funciona como um app comum. Ele roda nos planos gratuitos do [Supabase](https://supabase.com) e da [Vercel](https://vercel.com). Este README explica como ele funciona e como publicá-lo. Os termos de uso do código estão em [Licença](#licença).
+O Granaa é um aplicativo web que pode ser instalado na tela inicial do celular, no iPhone ou no Android, e funciona como um app comum. Ele roda nos planos gratuitos do [Supabase](https://supabase.com) e da [Vercel](https://vercel.com). Este README explica como ele funciona. Os termos de uso do código estão em [Licença](#licença).
 
 ## Funcionalidades
 
@@ -65,39 +65,11 @@ O arquivo é lido no próprio aparelho. Só os lançamentos que você confirmar 
 
 Cada pessoa tem a sua conta e enxerga apenas os próprios dados. Essa separação é garantida no banco de dados por Row Level Security do Postgres, e não só pelo app. Uma pessoa não consegue ler, alterar nem vincular lançamentos às contas, cartões ou categorias de outra. O app guarda apenas o que você digita ou importa e não se conecta às suas contas bancárias.
 
-## Publicação
-
-Você vai precisar de uma conta no GitHub, no Supabase e na Vercel, todas com plano gratuito.
-
-### 1. Repositório
-
-Tenha o código num repositório do GitHub ao qual a Vercel tenha acesso. Para fazer uma cópia própria, confira antes a seção [Licença](#licença).
-
-### 2. Banco de dados no Supabase
-
-1. Em [supabase.com](https://supabase.com), crie um projeto. Para quem está no Brasil, a região **South America (São Paulo)** deixa o app mais rápido.
-2. Abra o **SQL Editor** e execute, um de cada vez e em ordem, o conteúdo de cada arquivo da pasta [`supabase/migrations/`](supabase/migrations). Cole o conteúdo e clique em **Run**.
-3. Clique em **Connect** no topo do projeto e escolha **App Frameworks → Next.js**. Copie os valores de `NEXT_PUBLIC_SUPABASE_URL` e `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`. Também ficam em **Project Settings → API Keys**.
-
-### 3. Publicação na Vercel
-
-1. Em [vercel.com/new](https://vercel.com/new), importe o repositório.
-2. Em **Environment Variables**, cadastre as duas variáveis do passo anterior para os ambientes **Production**, **Preview** e **Development**.
-3. Clique em **Deploy**.
-
-As variáveis `NEXT_PUBLIC_*` entram no app no momento da compilação. Sempre que criar ou alterar uma delas, faça um novo deploy.
-
-### 4. Autenticação
-
-1. No Supabase, em **Authentication → URL Configuration**, coloque o endereço de produção da Vercel (por exemplo, `https://seu-app.vercel.app`) em **Site URL** e adicione `https://seu-app.vercel.app/**` em **Redirect URLs**.
-2. Em **Authentication → Sign In / Providers → Email**, escolha como tratar a confirmação de e-mail. O envio embutido do Supabase permite poucos e-mails por hora. Para uso pessoal, desligue **Confirm email**. Para uso aberto, mantenha a confirmação e configure um SMTP próprio em **Authentication → Emails**.
-3. Se o app for só para você e algumas pessoas de confiança, desligue **Allow new users to sign up** depois que todos tiverem criado a conta.
-
-### 5. Instalação no celular
+## Instalação no celular
 
 Abra o endereço no navegador do celular. No iPhone, use **Compartilhar → Adicionar à Tela de Início**. No Android, use **⋮ → Instalar app**.
 
-### Problemas comuns
+## Problemas comuns
 
 | O que aparece | Causa provável e solução |
 | --- | --- |
