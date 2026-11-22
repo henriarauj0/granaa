@@ -43,7 +43,7 @@ O arquivo é lido no próprio aparelho. Só os lançamentos que você confirmar 
 
 **Exportação para planilha.** Na tela de lançamentos, o botão **Exportar planilha** gera um arquivo .xlsx com o que está na tela (mês e filtros aplicados) ou com todo o histórico. A planilha tem duas abas: a lista de lançamentos, com data, descrição, tipo, categoria, conta ou cartão, parcela, valor e observações, e um resumo com receitas, despesas, resultado e gastos por categoria. O arquivo é gerado no próprio aparelho e abre no Excel, no Google Planilhas e no Numbers.
 
-**Aparência.** Em **Mais → Aparência**, escolha o tema verde (claro), o escuro (fundo preto com destaques em verde-água) ou o automático, que segue a configuração do aparelho. A escolha fica salva no aparelho.
+**Aparência.** Em **Mais → Aparência**, escolha o tema claro, o escuro (fundo preto com destaques em verde) ou o automático, que segue a configuração do aparelho. A escolha fica salva no aparelho.
 
 **Gráficos.** Os gastos por categoria aparecem num gráfico de rosca no painel inicial e na tela de lançamentos. Tocar numa fatia abre a categoria no painel ou filtra a lista de lançamentos.
 

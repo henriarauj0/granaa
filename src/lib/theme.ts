@@ -1,4 +1,4 @@
-// Tema do app: "verde" (claro), "escuro" ou automático (segue o aparelho).
+// Tema do app: claro, escuro ou automático (segue o aparelho).
 // A escolha fica no aparelho (localStorage). O <html> sempre recebe o tema
 // concreto em data-theme ("light" ou "dark"); no automático, ele acompanha o
 // aparelho. Assim as cores de cada tema ficam definidas uma vez só no CSS.

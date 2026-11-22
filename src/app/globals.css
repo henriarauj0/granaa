@@ -34,7 +34,7 @@
   color-scheme: light;
 }
 
-/* Tema escuro: fundo preto, cartões cinza e destaque verde-água.
+/* Tema escuro: fundo preto, cartões cinza e destaque verde.
    O script do <head> (src/lib/theme.ts) define data-theme="dark" quando o
    usuário escolhe "Escuro" ou, no automático, quando o aparelho está escuro. */
 :root[data-theme="dark"] {
@@ -46,12 +46,12 @@
   --ink-2: #c9c9c9;
   --muted: #8c8c8c;
   --line: #262626;
-  --brand: #6cc0be;
-  --brand-strong: #8ad3d1;
-  --brand-soft: #163130;
-  --on-brand: #04211f;
+  --brand: #3fbf84;
+  --brand-strong: #5cd59b;
+  --brand-soft: #173a2a;
+  --on-brand: #06130d;
   --accent: #c6ef5e;
-  --income: #74cba9;
+  --income: #4cc98d;
   --expense: #ee7a70;
   --warning: #e6b048;
   --warning-soft: #33290f;

@@ -16,7 +16,7 @@ export function ThemePicker() {
         saveTheme(c);
       }}
       options={[
-        { value: "light", label: "Verde" },
+        { value: "light", label: "Claro" },
         { value: "dark", label: "Escuro" },
         { value: "auto", label: "Automático" },
       ]}
