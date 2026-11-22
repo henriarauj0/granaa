@@ -5,12 +5,12 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useMemo, useState } from "react";
 import { useData } from "@/components/data-provider";
-import { Donut } from "@/components/donut";
+import { categorySlices, Donut } from "@/components/donut";
 import { ExportSheet } from "@/components/export-sheet";
 import { TransactionRow } from "@/components/transaction-row";
 import { EmptyState, Money, MonthSwitcher, PageHeader } from "@/components/ui";
-import { currentMonth, dayHeading, monthKey, monthLabel } from "@/lib/dates";
-import { categoryTotals, monthSummary } from "@/lib/finance";
+import { currentMonth, dayHeading, isValidISODate, monthKey } from "@/lib/dates";
+import { NO_CATEGORY, categoryKey, categoryTotals, lancamentosLabel, periodSummary } from "@/lib/finance";
 import { normalizeDescription } from "@/lib/import/categorize";
 import { formatMoney } from "@/lib/money";
 import type { Transaction } from "@/lib/types";
@@ -39,10 +39,10 @@ export default function LancamentosPage() {
  */
 function Lancamentos() {
   const params = useSearchParams();
-  const { transactions, accounts, cards, categories } = useData();
+  const { transactions, accounts, cards, categories, accountById, cardById, categoryById } = useData();
   const [month, setMonth] = useState(() => {
     const mes = params.get("mes");
-    return mes && /^\d{4}-(0[1-9]|1[0-2])$/.test(mes) ? `${mes}-01` : currentMonth();
+    return mes && isValidISODate(`${mes}-01`) ? `${mes}-01` : currentMonth();
   });
   const [query, setQuery] = useState("");
   const [kind, setKind] = useState<KindFilter>(() => {
@@ -52,7 +52,7 @@ function Lancamentos() {
   const [source, setSource] = useState("");
   const [category, setCategory] = useState(() => {
     const id = params.get("categoria");
-    return id === "none" || categories.some((c) => c.id === id) ? id! : "";
+    return id && (id === "none" || categoryById.has(id)) ? id : "";
   });
   const [exporting, setExporting] = useState(false);
 
@@ -71,15 +71,7 @@ function Lancamentos() {
     });
   }, [transactions, month, query, kind, source]);
 
-  const filtered = useMemo(
-    () =>
-      base.filter((t) => {
-        if (category === "none" && t.category_id) return false;
-        if (category && category !== "none" && t.category_id !== category) return false;
-        return true;
-      }),
-    [base, category],
-  );
+  const filtered = useMemo(() => (category ? base.filter((t) => categoryKey(t) === category) : base), [base, category]);
 
   const byCategory = useMemo(() => categoryTotals(base, categories), [base, categories]);
 
@@ -93,13 +85,13 @@ function Lancamentos() {
     return [...map.entries()].sort((a, b) => b[0].localeCompare(a[0]));
   }, [filtered]);
 
-  const summary = monthSummary(filtered, month);
+  const summary = useMemo(() => periodSummary(filtered), [filtered]);
 
   const filterText = [
     kind !== "all" ? KIND_LABEL[kind] : null,
-    source.startsWith("a:") ? accounts.find((a) => a.id === source.slice(2))?.name : null,
-    source.startsWith("c:") ? cards.find((c) => c.id === source.slice(2))?.name : null,
-    category === "none" ? "Sem categoria" : category ? categories.find((c) => c.id === category)?.name : null,
+    source.startsWith("a:") ? accountById.get(source.slice(2))?.name : null,
+    source.startsWith("c:") ? cardById.get(source.slice(2))?.name : null,
+    category === "none" ? NO_CATEGORY : category ? categoryById.get(category)?.name : null,
     query.trim() ? `busca "${query.trim()}"` : null,
   ]
     .filter(Boolean)
@@ -181,12 +173,7 @@ function Lancamentos() {
             </h2>
             <Donut
               label="Despesas por categoria"
-              slices={byCategory.map((r) => ({
-                key: r.key,
-                label: r.category?.name ?? "Sem categoria",
-                value: r.total,
-                color: r.category?.color ?? "#8c9690",
-              }))}
+              slices={categorySlices(byCategory)}
               selected={category || null}
               onSelect={(key) => setCategory(key ?? "")}
             />
@@ -194,9 +181,7 @@ function Lancamentos() {
         ) : null}
 
         <div className="flex items-center justify-between pl-2">
-          <p className="text-sm text-muted">
-            {filtered.length === 1 ? "1 lançamento" : `${filtered.length} lançamentos`}
-          </p>
+          <p className="text-sm text-muted">{lancamentosLabel(filtered.length)}</p>
           <button
             type="button"
             onClick={() => setExporting(true)}
@@ -207,14 +192,7 @@ function Lancamentos() {
         </div>
       </div>
 
-      <ExportSheet
-        open={exporting}
-        onClose={() => setExporting(false)}
-        visible={filtered}
-        visibleLabel={monthLabel(month)}
-        filters={filterText}
-        month={month}
-      />
+      {exporting ? <ExportSheet onClose={() => setExporting(false)} visible={filtered} filters={filterText} month={month} /> : null}
 
       <div className="mt-5 space-y-5">
         {groups.length === 0 ? (

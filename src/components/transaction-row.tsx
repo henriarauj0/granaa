@@ -3,6 +3,7 @@
 import { ArrowLeftRight, CreditCard, Receipt } from "lucide-react";
 import Link from "next/link";
 import { shortDate } from "@/lib/dates";
+import { transactionSource } from "@/lib/finance";
 import type { Transaction } from "@/lib/types";
 import { useData } from "./data-provider";
 import { Money } from "./ui";
@@ -11,11 +12,8 @@ export function TransactionRow({ t, showDate = false }: { t: Transaction; showDa
   const { categoryById, accountById, cardById } = useData();
   const category = t.category_id ? categoryById.get(t.category_id) : null;
   const card = t.card_id ? cardById.get(t.card_id) : null;
-  const account = t.account_id ? accountById.get(t.account_id) : null;
 
-  let where = card ? card.name : account?.name ?? "";
-  if (t.kind === "transfer") where = `${account?.name ?? "?"} → ${t.to_account_id ? accountById.get(t.to_account_id)?.name ?? "?" : "?"}`;
-  if (t.kind === "card_payment") where = `${account?.name ?? ""} → ${card?.name ?? ""}`;
+  const where = transactionSource(t, (id) => accountById.get(id)?.name, (id) => cardById.get(id)?.name);
 
   const sign: "income" | "expense" | "neutral" =
     t.kind === "income" ? "income" : t.kind === "expense" ? "expense" : "neutral";

@@ -1,13 +1,6 @@
 import { describe, expect, it } from "vitest";
-import {
-  averageMonthlyContribution,
-  byClass,
-  monthlyFlows,
-  netInvested,
-  niceMax,
-  portfolio,
-  positionValue,
-} from "../investments";
+import { centerMoney } from "../money";
+import { assetStats, averageMonthlyContribution, byClass, monthlyFlows, niceMax, positions } from "../investments";
 import type { Investment, InvestmentMovement } from "../types";
 
 let n = 0;
@@ -43,15 +36,15 @@ describe("investimentos", () => {
   ];
 
   it("valor parte do último saldo informado", () => {
-    expect(positionValue("a", moves, "2026-08-31")).toBe(1500);
-    expect(positionValue("a", moves, "2026-09-01")).toBe(1600);
-    expect(positionValue("a", moves, "2026-11-22")).toBe(1700);
-    expect(netInvested("a", moves)).toBe(1600);
+    expect(assetStats(moves, "2026-08-31").get("a")?.value).toBe(1500);
+    expect(assetStats(moves, "2026-09-01").get("a")?.value).toBe(1600);
+    expect(assetStats(moves, "2026-11-22").get("a")).toEqual({ value: 1700, net: 1600 });
+    expect(assetStats(moves, "2026-11-22").get("c")).toEqual({ value: 0, net: 0 });
   });
 
-  it("carteira ignora ativos zerados e soma por classe na ordem fixa", () => {
-    const rows = portfolio([asset("a", "acoes"), asset("b", "renda_fixa"), asset("c", "cripto")], moves, "2026-11-22");
-    expect(rows.map((r) => [r.investment.id, r.value])).toEqual([["a", 1700], ["b", 900]]);
+  it("lista todos os ativos e soma por classe na ordem fixa, sem os zerados", () => {
+    const rows = positions([asset("a", "acoes"), asset("b", "renda_fixa"), asset("c", "cripto")], assetStats(moves, "2026-11-22"));
+    expect(rows.map((r) => [r.investment.id, r.value])).toEqual([["a", 1700], ["b", 900], ["c", 0]]);
     expect(byClass(rows).map((c) => c.label)).toEqual(["Renda fixa", "Ações"]);
   });
 
@@ -77,8 +70,7 @@ describe("investimentos", () => {
 });
 
 describe("valor no centro da rosca", () => {
-  it("abrevia valores grandes", async () => {
-    const { centerMoney } = await import("../money");
+  it("abrevia valores grandes", () => {
     const clean = (s: string) => s.replace(/\s/g, " ");
     expect(clean(centerMoney(533.5))).toBe("R$ 533,50");
     expect(clean(centerMoney(302_800))).toBe("R$ 302.800");

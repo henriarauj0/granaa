@@ -5,17 +5,10 @@ import { useMemo, useState } from "react";
 import { useData } from "@/components/data-provider";
 import { Donut } from "@/components/donut";
 import { FlowChart } from "@/components/flow-chart";
-import { Button, EmptyState, ErrorBox, Field, IconButton, MoneyInput, PageHeader, Segmented, Sheet } from "@/components/ui";
+import { Button, EmptyState, ErrorBox, Field, IconButton, Money, MoneyInput, PageHeader, Segmented, Sheet } from "@/components/ui";
 import { deleteInvestment, deleteMovement, saveInvestment, saveMovement } from "@/lib/api";
 import { isValidISODate, monthKey, monthLabel, shortDate, today } from "@/lib/dates";
-import {
-  averageMonthlyContribution,
-  byClass,
-  monthlyFlows,
-  netInvested,
-  portfolio,
-  positionValue,
-} from "@/lib/investments";
+import { assetStats, averageMonthlyContribution, byClass, monthlyFlows, positions as listPositions, type AssetStats } from "@/lib/investments";
 import { formatMoney, wholeMoney } from "@/lib/money";
 import {
   INVESTMENT_CLASSES,
@@ -40,11 +33,13 @@ export default function InvestimentosPage() {
   const [editingAsset, setEditingAsset] = useState<Investment | "new" | null>(null);
   const [editingMove, setEditingMove] = useState<MovementTarget | null>(null);
 
-  const positions = useMemo(() => portfolio(investments, movements), [investments, movements]);
+  const stats = useMemo(() => assetStats(movements), [movements]);
+  const all = useMemo(() => listPositions(investments, stats), [investments, stats]);
+  const positions = useMemo(() => all.filter((p) => p.value > 0), [all]);
   const total = positions.reduce((s, p) => s + p.value, 0);
   const average = useMemo(() => averageMonthlyContribution(movements), [movements]);
   const flows = useMemo(() => monthlyFlows(movements, 6), [movements]);
-  const assetName = useMemo(() => new Map(investments.map((i) => [i.id, i])), [investments]);
+  const assetById = useMemo(() => new Map(investments.map((i) => [i.id, i])), [investments]);
 
   const slices = useMemo(() => {
     if (view === "classe") {
@@ -65,7 +60,8 @@ export default function InvestimentosPage() {
     });
   }, [positions, view]);
 
-  const months = useMemo(() => [...new Set(movements.map((m) => monthKey(m.date)))].sort().reverse(), [movements]);
+  // as movimentações chegam do banco da mais recente para a mais antiga
+  const months = useMemo(() => [...new Set(movements.map((m) => monthKey(m.date)))], [movements]);
   const listed = monthFilter ? movements.filter((m) => monthKey(m.date) === monthFilter) : movements;
 
   const add = () => (investments.length === 0 ? setEditingAsset("new") : setEditingMove({}));
@@ -176,12 +172,9 @@ export default function InvestimentosPage() {
               </button>
             </div>
             <div className="card divide-y divide-line overflow-hidden">
-              {investments
-                .map((inv) => ({ inv, value: positionValue(inv.id, movements) }))
-                .sort((a, b) => b.value - a.value)
-                .map(({ inv, value }) => {
+              {all.map(({ investment: inv, value }) => {
                   const cls = CLASS.get(inv.asset_class)!;
-                  const gain = value - netInvested(inv.id, movements);
+                  const gain = value - (stats.get(inv.id)?.net ?? 0);
                   return (
                     <button
                       key={inv.id}
@@ -199,10 +192,7 @@ export default function InvestimentosPage() {
                       <span className="text-right">
                         <span className="num block text-sm font-semibold">{formatMoney(value)}</span>
                         {Math.abs(gain) >= 0.01 ? (
-                          <span className={`num text-xs ${gain > 0 ? "text-income" : "text-expense"}`}>
-                            {gain > 0 ? "+" : "−"}
-                            {formatMoney(Math.abs(gain))}
-                          </span>
+                          <Money value={gain} kind={gain > 0 ? "income" : "expense"} className="text-xs" />
                         ) : null}
                       </span>
                     </button>
@@ -238,7 +228,7 @@ export default function InvestimentosPage() {
                 <p className="py-6 text-center text-sm text-muted">Nenhuma movimentação.</p>
               ) : (
                 listed.slice(0, limit).map((m) => {
-                  const inv = assetName.get(m.investment_id);
+                  const inv = assetById.get(m.investment_id);
                   const color = inv ? CLASS.get(inv.asset_class)!.color : "var(--muted)";
                   return (
                     <button
@@ -261,14 +251,11 @@ export default function InvestimentosPage() {
                           {m.notes ? ` · ${m.notes}` : ""}
                         </span>
                       </span>
-                      <span
-                        className={`num whitespace-nowrap text-sm font-semibold ${
-                          m.kind === "aporte" ? "text-income" : m.kind === "resgate" ? "text-expense" : "text-ink-2"
-                        }`}
-                      >
-                        {m.kind === "aporte" ? "+ " : m.kind === "resgate" ? "− " : ""}
-                        {formatMoney(m.amount)}
-                      </span>
+                      <Money
+                        value={m.amount}
+                        kind={m.kind === "aporte" ? "income" : m.kind === "resgate" ? "expense" : undefined}
+                        className={`text-sm font-semibold ${m.kind === "saldo" ? "text-ink-2" : ""}`}
+                      />
                     </button>
                   );
                 })
@@ -300,6 +287,7 @@ export default function InvestimentosPage() {
         {editingAsset !== null ? (
           <AssetForm
             asset={editingAsset === "new" ? undefined : editingAsset}
+            value={editingAsset === "new" ? 0 : stats.get(editingAsset.id)?.value ?? 0}
             onDone={() => setEditingAsset(null)}
             onMove={(investmentId) => {
               setEditingAsset(null);
@@ -313,21 +301,30 @@ export default function InvestimentosPage() {
         onClose={() => setEditingMove(null)}
         title={editingMove?.movement ? "Editar movimentação" : "Nova movimentação"}
       >
-        {editingMove !== null ? <MovementForm target={editingMove} onDone={() => setEditingMove(null)} /> : null}
+        {editingMove !== null ? <MovementForm target={editingMove} stats={stats} onDone={() => setEditingMove(null)} /> : null}
       </Sheet>
     </>
   );
 }
 
-function AssetForm({ asset, onDone, onMove }: { asset?: Investment; onDone: () => void; onMove: (id: string) => void }) {
-  const { reload, movements } = useData();
+function AssetForm({
+  asset,
+  value,
+  onDone,
+  onMove,
+}: {
+  asset?: Investment;
+  value: number;
+  onDone: () => void;
+  onMove: (id: string) => void;
+}) {
+  const { reload } = useData();
   const [name, setName] = useState(asset?.name ?? "");
   const [assetClass, setAssetClass] = useState<InvestmentClass>(asset?.asset_class ?? "renda_fixa");
   const [institution, setInstitution] = useState(asset?.institution ?? "");
   const [initial, setInitial] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const value = asset ? positionValue(asset.id, movements) : 0;
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -406,8 +403,16 @@ function AssetForm({ asset, onDone, onMove }: { asset?: Investment; onDone: () =
   );
 }
 
-function MovementForm({ target, onDone }: { target: MovementTarget; onDone: () => void }) {
-  const { reload, investments, movements } = useData();
+function MovementForm({
+  target,
+  stats,
+  onDone,
+}: {
+  target: MovementTarget;
+  stats: Map<string, AssetStats>;
+  onDone: () => void;
+}) {
+  const { reload, investments } = useData();
   const original = target.movement;
   const [investmentId, setInvestmentId] = useState(original?.investment_id ?? target.investmentId ?? investments[0]?.id ?? "");
   const [kind, setKind] = useState<MovementKind>(original?.kind ?? "aporte");
@@ -416,7 +421,7 @@ function MovementForm({ target, onDone }: { target: MovementTarget; onDone: () =
   const [notes, setNotes] = useState(original?.notes ?? "");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const current = investmentId ? positionValue(investmentId, movements) : 0;
+  const current = stats.get(investmentId)?.value ?? 0;
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();

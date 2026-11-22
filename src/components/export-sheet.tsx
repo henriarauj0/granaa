@@ -2,8 +2,10 @@
 
 import { Download } from "lucide-react";
 import { useState } from "react";
-import { fullDate, today } from "@/lib/dates";
-import { exportTransactions, XLSX_MIME } from "@/lib/export/transactions";
+import { dateRangeLabel, monthLabel, today } from "@/lib/dates";
+import { exportTransactions } from "@/lib/export/transactions";
+import { XLSX_MIME } from "@/lib/export/xlsx";
+import { lancamentosLabel } from "@/lib/finance";
 import type { Transaction } from "@/lib/types";
 import { useData } from "./data-provider";
 import { Button, ErrorBox, Segmented, Sheet } from "./ui";
@@ -22,22 +24,16 @@ function download(bytes: Uint8Array, filename: string) {
   setTimeout(() => URL.revokeObjectURL(url), 10_000);
 }
 
-const plural = (n: number) => (n === 1 ? "1 lançamento" : `${n} lançamentos`);
-
+/** Montado só enquanto aberto: o estado volta ao padrão a cada abertura. */
 export function ExportSheet({
-  open,
   onClose,
   visible,
-  visibleLabel,
   filters,
   month,
 }: {
-  open: boolean;
   onClose: () => void;
   /** Lançamentos que estão na tela (mês e filtros). */
   visible: Transaction[];
-  /** Ex.: "Novembro de 2026" */
-  visibleLabel: string;
   filters: string;
   /** YYYY-MM-01 */
   month: string;
@@ -46,15 +42,17 @@ export function ExportSheet({
   const [scope, setScope] = useState<Scope>("visible");
   const [error, setError] = useState<string | null>(null);
 
+  const visibleLabel = monthLabel(month);
   const list = scope === "visible" ? visible : transactions;
-  const oldest = transactions.reduce<string | null>((min, t) => (min == null || t.date < min ? t.date : min), null);
-  const newest = transactions.reduce<string | null>((max, t) => (max == null || t.date > max ? t.date : max), null);
+  // os lançamentos chegam do banco do mais recente para o mais antigo
+  const newest = transactions[0]?.date;
+  const oldest = transactions.at(-1)?.date;
 
   const description =
     scope === "visible"
-      ? `${plural(visible.length)} de ${visibleLabel.toLowerCase()}${filters ? `, filtrados por: ${filters}` : ""}.`
+      ? `${lancamentosLabel(visible.length)} de ${visibleLabel.toLowerCase()}${filters ? `, filtrados por: ${filters}` : ""}.`
       : oldest && newest
-        ? `${plural(transactions.length)}, de ${fullDate(oldest)} a ${fullDate(newest)}.`
+        ? `${lancamentosLabel(transactions.length)}, de ${dateRangeLabel(oldest, newest)}.`
         : "Nenhum lançamento registrado.";
 
   function save() {
@@ -64,7 +62,7 @@ export function ExportSheet({
         list,
         { accounts, cards, categories },
         scope === "visible"
-          ? { period: visibleLabel, filters: filters || undefined }
+          ? { period: visibleLabel, filters }
           : { period: "Todo o histórico" },
       );
       const name =
@@ -77,7 +75,7 @@ export function ExportSheet({
   }
 
   return (
-    <Sheet open={open} onClose={onClose} title="Exportar planilha">
+    <Sheet open onClose={onClose} title="Exportar planilha">
       <div className="space-y-4">
         <Segmented<Scope>
           label="O que exportar"

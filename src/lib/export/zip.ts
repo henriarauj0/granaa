@@ -67,7 +67,6 @@ export function zip(entries: ZipEntry[]): Uint8Array {
     bytes(f.data);
   }
 
-  const centralStart = p;
   files.forEach((f, i) => {
     u32(0x02014b50);
     u16(20);
@@ -89,14 +88,14 @@ export function zip(entries: ZipEntry[]): Uint8Array {
     bytes(f.name);
   });
 
-  const centralLength = p - centralStart;
+  // o diretório central começa logo depois dos arquivos
   u32(0x06054b50);
   u16(0);
   u16(0);
   u16(files.length);
   u16(files.length);
-  u32(centralLength);
-  u32(centralStart);
+  u32(centralSize);
+  u32(localSize);
   u16(0);
   return out;
 }

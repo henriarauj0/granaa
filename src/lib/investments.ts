@@ -1,50 +1,49 @@
-import { addMonths, currentMonth, monthKey, monthsBetween, today } from "./dates";
+import { addMonths, byDateAsc, currentMonth, monthKey, monthsBetween, today } from "./dates";
 import { cents } from "./money";
 import { INVESTMENT_CLASSES, type Investment, type InvestmentClass, type InvestmentMovement } from "./types";
 
-const byDate = (a: InvestmentMovement, b: InvestmentMovement) =>
-  a.date.localeCompare(b.date) || a.created_at.localeCompare(b.created_at);
-
-/**
- * Valor de um ativo numa data: parte do último "saldo" informado e soma
- * os aportes e subtrai os resgates feitos depois dele. Sem nenhum saldo
- * informado, o valor é o total aplicado (aportes menos resgates).
- */
-export function positionValue(investmentId: string, movements: InvestmentMovement[], until = today()): number {
-  let value = 0;
-  for (const m of movements.filter((m) => m.investment_id === investmentId && m.date <= until).sort(byDate)) {
-    if (m.kind === "saldo") value = m.amount;
-    else if (m.kind === "aporte") value += m.amount;
-    else value -= m.amount;
-  }
-  return cents(Math.max(0, value));
+export interface AssetStats {
+  /** Quanto vale hoje. */
+  value: number;
+  /** Aportes menos resgates, sem rendimento. */
+  net: number;
 }
 
-/** Aportes menos resgates, sem considerar rendimento. */
-export function netInvested(investmentId: string, movements: InvestmentMovement[]): number {
-  let total = 0;
-  for (const m of movements) {
-    if (m.investment_id !== investmentId) continue;
-    if (m.kind === "aporte") total += m.amount;
-    else if (m.kind === "resgate") total -= m.amount;
+/**
+ * Valor e total aplicado de cada ativo, numa passagem só pelas movimentações.
+ * O valor parte do último "saldo" informado e soma os aportes e subtrai os
+ * resgates feitos depois dele. Sem nenhum saldo informado, o valor é o total
+ * aplicado (aportes menos resgates).
+ */
+export function assetStats(movements: InvestmentMovement[], until = today()): Map<string, AssetStats> {
+  const stats = new Map<string, AssetStats>();
+  for (const m of [...movements].sort(byDateAsc)) {
+    const s = stats.get(m.investment_id) ?? { value: 0, net: 0 };
+    stats.set(m.investment_id, s);
+    if (m.kind === "aporte") s.net += m.amount;
+    else if (m.kind === "resgate") s.net -= m.amount;
+    if (m.date > until) continue;
+    if (m.kind === "saldo") s.value = m.amount;
+    else if (m.kind === "aporte") s.value += m.amount;
+    else s.value -= m.amount;
   }
-  return cents(total);
+  for (const s of stats.values()) {
+    s.value = cents(Math.max(0, s.value));
+    s.net = cents(s.net);
+  }
+  return stats;
 }
 
 export interface Position {
   investment: Investment;
   value: number;
-  share: number;
 }
 
-/** Ativos com valor, do maior para o menor. */
-export function portfolio(investments: Investment[], movements: InvestmentMovement[], until = today()): Position[] {
-  const rows = investments
-    .map((investment) => ({ investment, value: positionValue(investment.id, movements, until) }))
-    .filter((r) => r.value > 0)
+/** Todos os ativos com o valor de hoje, do maior para o menor (inclui os zerados). */
+export function positions(investments: Investment[], stats: Map<string, AssetStats>): Position[] {
+  return investments
+    .map((investment) => ({ investment, value: stats.get(investment.id)?.value ?? 0 }))
     .sort((a, b) => b.value - a.value);
-  const total = rows.reduce((s, r) => s + r.value, 0);
-  return rows.map((r) => ({ ...r, share: total > 0 ? r.value / total : 0 }));
 }
 
 export interface ClassTotal {
@@ -52,15 +51,13 @@ export interface ClassTotal {
   label: string;
   color: string;
   value: number;
-  share: number;
 }
 
 /** Soma por classe, mantendo a ordem fixa das classes (que define a cor). */
-export function byClass(positions: Position[]): ClassTotal[] {
-  const total = positions.reduce((s, p) => s + p.value, 0);
+export function byClass(list: Position[]): ClassTotal[] {
   return INVESTMENT_CLASSES.map((c) => {
-    const value = cents(positions.filter((p) => p.investment.asset_class === c.value).reduce((s, p) => s + p.value, 0));
-    return { assetClass: c.value, label: c.label, color: c.color, value, share: total > 0 ? value / total : 0 };
+    const value = cents(list.filter((p) => p.investment.asset_class === c.value).reduce((s, p) => s + p.value, 0));
+    return { assetClass: c.value, label: c.label, color: c.color, value };
   }).filter((c) => c.value > 0);
 }
 

@@ -85,6 +85,21 @@ export function dayHeading(iso: string): string {
   return `${weekday.charAt(0).toUpperCase() + weekday.slice(1)}, ${day} de ${MONTHS[month - 1]}`;
 }
 
+/** Mês abreviado com inicial maiúscula: "Nov". */
+export function shortMonth(iso: string): string {
+  const name = MONTHS_SHORT[parts(iso).month - 1];
+  return name.charAt(0).toUpperCase() + name.slice(1);
+}
+
+/** "05/11/2026" ou "05/11/2026 a 20/11/2026". */
+export function dateRangeLabel(first: string, last: string): string {
+  return first === last ? fullDate(first) : `${fullDate(first)} a ${fullDate(last)}`;
+}
+
+/** Ordem cronológica; no mesmo dia, pela ordem de cadastro. */
+export const byDateAsc = (a: { date: string; created_at: string }, b: { date: string; created_at: string }) =>
+  a.date.localeCompare(b.date) || a.created_at.localeCompare(b.created_at);
+
 /** Diferença em meses inteiros entre dois meses (b - a). */
 export function monthsBetween(a: string, b: string): number {
   const pa = parts(a);

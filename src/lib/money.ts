@@ -17,7 +17,7 @@ export function wholeMoney(value: number): string {
 /** Valor que cabe no miolo da rosca: sem centavos acima de mil, abreviado acima de um milhão. */
 export function centerMoney(value: number): string {
   if (value >= 1_000_000) return short.format(value);
-  if (value >= 1_000) return whole.format(value);
+  if (value >= 1_000) return wholeMoney(value);
   return formatMoney(value);
 }
 

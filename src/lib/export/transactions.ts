@@ -1,5 +1,5 @@
-import { fullDate } from "../dates";
-import { categoryTotals, periodSummary } from "../finance";
+import { byDateAsc, dateRangeLabel } from "../dates";
+import { NO_CATEGORY, categoryTotals, periodSummary, transactionSource } from "../finance";
 import type { Account, Category, CreditCard, Transaction } from "../types";
 import { bold, buildXlsx, date, money, moneyBold, percent, type Cell, type Sheet } from "./xlsx";
 
@@ -43,15 +43,8 @@ export function transactionsSheets(transactions: Transaction[], lookups: ExportL
   const cardName = new Map(lookups.cards.map((c) => [c.id, c.name]));
   const categoryName = new Map(lookups.categories.map((c) => [c.id, c.name]));
 
-  const where = (t: Transaction): string => {
-    const account = t.account_id ? accountName.get(t.account_id) ?? "" : "";
-    const card = t.card_id ? cardName.get(t.card_id) ?? "" : "";
-    if (t.kind === "transfer") return `${account} → ${t.to_account_id ? accountName.get(t.to_account_id) ?? "" : ""}`;
-    if (t.kind === "card_payment") return `${account} → ${card}`;
-    return card || account;
-  };
-
-  const sorted = [...transactions].sort((a, b) => a.date.localeCompare(b.date) || a.created_at.localeCompare(b.created_at));
+  const where = (t: Transaction) => transactionSource(t, (id) => accountName.get(id), (id) => cardName.get(id));
+  const sorted = [...transactions].sort(byDateAsc);
 
   const list: Cell[][] = [
     ["Data", "Descrição", "Tipo", "Categoria", "Conta ou cartão", "Parcela", "Valor (R$)", "Observações"],
@@ -74,7 +67,7 @@ export function transactionsSheets(transactions: Transaction[], lookups: ExportL
 
   const resumo: Cell[][] = [
     [bold("Período"), options.period],
-    ...(first && last ? [[bold("Datas"), first === last ? fullDate(first) : `${fullDate(first)} a ${fullDate(last)}`]] : []),
+    ...(first && last ? [[bold("Datas"), dateRangeLabel(first, last)]] : []),
     ...(options.filters ? [[bold("Filtros"), options.filters]] : []),
     [bold("Lançamentos"), transactions.length],
     [],
@@ -83,7 +76,7 @@ export function transactionsSheets(transactions: Transaction[], lookups: ExportL
     [bold("Resultado"), moneyBold(summary.balance)],
     [],
     [bold("Gastos por categoria"), bold("Total (R$)"), bold("Participação"), bold("Lançamentos")],
-    ...byCategory.map((r): Cell[] => [r.category?.name ?? "Sem categoria", money(r.total), percent(r.share), r.count]),
+    ...byCategory.map((r): Cell[] => [r.category?.name ?? NO_CATEGORY, money(r.total), percent(r.share), r.count]),
     [],
     ["Transferências entre contas e pagamentos de fatura não entram nas receitas nem nas despesas."],
     ["Estornos no cartão abatem as despesas."],
@@ -98,5 +91,3 @@ export function transactionsSheets(transactions: Transaction[], lookups: ExportL
 export function exportTransactions(transactions: Transaction[], lookups: ExportLookups, options: ExportOptions): Uint8Array {
   return buildXlsx(transactionsSheets(transactions, lookups, options));
 }
-
-export const XLSX_MIME = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";

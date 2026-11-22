@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { NO_CATEGORY, NO_CATEGORY_COLOR, type CategoryTotal } from "@/lib/finance";
 import { centerMoney, formatMoney } from "@/lib/money";
 
 export interface DonutSlice {
@@ -17,13 +18,15 @@ const INNER = 50;
 const GAP = 2;
 /** Traço da mesma cor que arredonda os cantos (e engorda a fatia em STROKE/2). */
 const STROKE = 3;
+/** Itens na legenda; o resto aparece como "+ N outras". */
+const LEGEND = 4;
 
 function point(r: number, angle: number) {
   return [SIZE / 2 + r * Math.sin(angle), SIZE / 2 - r * Math.cos(angle)].map((n) => n.toFixed(2)).join(" ");
 }
 
 /** Fatia de anel entre dois ângulos (radianos, a partir do topo, sentido horário). */
-function slicePath(a0: number, a1: number): string | null {
+function slicePath(a0: number, a1: number): string {
   const pad = GAP + STROKE;
   const ro = OUTER - STROKE / 2;
   const ri = INNER + STROKE / 2;
@@ -49,7 +52,7 @@ function slicePath(a0: number, a1: number): string | null {
 }
 
 /** Cores quase pretas somem no tema escuro; usa um cinza no lugar. */
-function visible(color: string): string {
+export function visible(color: string): string {
   const m = /^#([0-9a-f]{6})$/i.exec(color);
   if (!m) return color;
   const n = parseInt(m[1], 16);
@@ -67,14 +70,12 @@ function visible(color: string): string {
 export function Donut({
   slices,
   label,
-  legendCount = 4,
   selected,
   onSelect,
 }: {
   slices: DonutSlice[];
   /** Nome do conjunto, para leitores de tela. */
   label: string;
-  legendCount?: number;
   selected?: string | null;
   onSelect?: (key: string | null) => void;
 }) {
@@ -95,7 +96,7 @@ export function Donut({
   });
 
   // legenda sempre pelos maiores valores, mesmo que as fatias venham agrupadas
-  const legend = [...data].sort((a, b) => b.value - a.value).slice(0, legendCount);
+  const legend = [...data].sort((a, b) => b.value - a.value).slice(0, LEGEND);
   const rest = data.length - legend.length;
   const pct = (v: number) => {
     const p = (v / total) * 100;
@@ -118,7 +119,6 @@ export function Donut({
           ) : (
             arcs.map((a) => {
               const d = slicePath(a.a0, a.a1);
-              if (!d) return null;
               const color = visible(a.color);
               const dim = active != null && active !== a.key;
               return (
@@ -185,4 +185,14 @@ export function Donut({
       </ul>
     </div>
   );
+}
+
+/** Fatias dos gastos por categoria, com o mesmo nome e cor de "sem categoria" em todo o app. */
+export function categorySlices(rows: CategoryTotal[]): DonutSlice[] {
+  return rows.map((r) => ({
+    key: r.key,
+    label: r.category?.name ?? NO_CATEGORY,
+    value: r.total,
+    color: r.category?.color ?? NO_CATEGORY_COLOR,
+  }));
 }

@@ -29,6 +29,8 @@ export const moneyBold = (value: number): Cell => ({ style: "moneyBold", value }
 export const percent = (value: number): Cell => ({ style: "percent", value });
 export const bold = (value: string): Cell => ({ style: "bold", value });
 
+export const XLSX_MIME = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+
 export interface Sheet {
   name: string;
   /** Largura de cada coluna, em caracteres. */
@@ -86,8 +88,13 @@ function cellXml(cell: Cell, ref: string, headerRow: boolean): string {
   return `<c r="${ref}"${s} t="inlineStr"><is><t${space}>${escapeXml(value)}</t></is></c>`;
 }
 
+/** Última coluna e última linha do filtro automático, ou null sem cabeçalho ou sem dados. */
+function filterEnd(sheet: Sheet): { col: string; row: number } | null {
+  if (!sheet.header || sheet.rows.length < 2) return null;
+  return { col: columnName(Math.max(0, sheet.widths.length - 1)), row: sheet.rows.length };
+}
+
 function sheetXml(sheet: Sheet): string {
-  const lastCol = columnName(Math.max(0, sheet.widths.length - 1));
   const rows = sheet.rows
     .map((row, r) => {
       const cells = row.map((cell, c) => cellXml(cell, `${columnName(c)}${r + 1}`, !!sheet.header && r === 0)).join("");
@@ -100,7 +107,8 @@ function sheetXml(sheet: Sheet): string {
   const pane = sheet.header
     ? '<pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/>'
     : "";
-  const filter = sheet.header && sheet.rows.length > 1 ? `<autoFilter ref="A1:${lastCol}${sheet.rows.length}"/>` : "";
+  const end = filterEnd(sheet);
+  const filter = end ? `<autoFilter ref="A1:${end.col}${end.row}"/>` : "";
   return (
     '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
     '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">' +
@@ -163,10 +171,10 @@ export function buildXlsx(sheets: Sheet[]): Uint8Array {
 
   const filters = sheets
     .map((s, i) => {
-      if (!s.header || s.rows.length < 2) return "";
+      const end = filterEnd(s);
+      if (!end) return "";
       const quoted = `'${escapeXml(names[i]).replace(/'/g, "''")}'`;
-      const lastCol = columnName(Math.max(0, s.widths.length - 1));
-      return `<definedName name="_xlnm._FilterDatabase" localSheetId="${i}" hidden="1">${quoted}!$A$1:$${lastCol}$${s.rows.length}</definedName>`;
+      return `<definedName name="_xlnm._FilterDatabase" localSheetId="${i}" hidden="1">${quoted}!$A$1:$${end.col}$${end.row}</definedName>`;
     })
     .join("");
 

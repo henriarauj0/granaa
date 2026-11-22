@@ -6,7 +6,7 @@ import { Segmented } from "./ui";
 
 export function ThemePicker() {
   // as telas do app só renderizam no navegador, depois da sessão carregar
-  const [choice, setChoice] = useState<ThemeChoice>(() => (typeof window === "undefined" ? "auto" : readTheme()));
+  const [choice, setChoice] = useState<ThemeChoice>(readTheme);
   return (
     <Segmented<ThemeChoice>
       label="Aparência"

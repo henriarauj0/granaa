@@ -147,10 +147,8 @@ export function periodSummary(transactions: Transaction[]): MonthSummary {
   let income = 0;
   let expense = 0;
   for (const t of transactions) {
-    if (t.kind === "income") {
-      if (t.card_id) expense -= t.amount;
-      else income += t.amount;
-    } else if (t.kind === "expense") expense += t.amount;
+    if (t.kind === "income" && !t.card_id) income += t.amount;
+    else expense += expenseWeight(t);
   }
   return { income: cents(income), expense: cents(expense), balance: cents(income - expense) };
 }
@@ -172,6 +170,28 @@ export function expenseWeight(t: Transaction): number {
 
 /** Chave da categoria nos agrupamentos: o id ou "none" para sem categoria. */
 export const categoryKey = (t: Pick<Transaction, "category_id">) => t.category_id ?? "none";
+
+export const NO_CATEGORY = "Sem categoria";
+/** Cor de quem não tem categoria, nos gráficos e nas listas. */
+export const NO_CATEGORY_COLOR = "var(--series-other)";
+
+export const lancamentosLabel = (n: number) => (n === 1 ? "1 lançamento" : `${n} lançamentos`);
+
+/**
+ * De onde sai e para onde vai o lançamento: "Conta", "Cartão",
+ * "Conta A → Conta B" (transferência) ou "Conta → Cartão" (pagamento de fatura).
+ */
+export function transactionSource(
+  t: Transaction,
+  accountName: (id: string) => string | undefined,
+  cardName: (id: string) => string | undefined,
+): string {
+  const account = t.account_id ? accountName(t.account_id) : undefined;
+  const card = t.card_id ? cardName(t.card_id) : undefined;
+  if (t.kind === "transfer") return `${account ?? "?"} → ${(t.to_account_id && accountName(t.to_account_id)) || "?"}`;
+  if (t.kind === "card_payment") return `${account ?? ""} → ${card ?? ""}`;
+  return card ?? account ?? "";
+}
 
 export interface CategoryTotal {
   /** id da categoria ou "none" */

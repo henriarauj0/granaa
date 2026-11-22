@@ -1,11 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { monthLabel, parts } from "@/lib/dates";
+import { monthLabel, shortMonth } from "@/lib/dates";
 import { niceMax, type MonthFlow } from "@/lib/investments";
 import { formatMoney } from "@/lib/money";
 
-const MONTHS_SHORT = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
 const compact = new Intl.NumberFormat("pt-BR", { notation: "compact", maximumFractionDigits: 1 });
 const HEIGHT = 150;
 
@@ -13,7 +12,8 @@ const HEIGHT = 150;
 export function FlowChart({ flows }: { flows: MonthFlow[] }) {
   const [active, setActive] = useState<string | null>(null);
   const max = niceMax(Math.max(0, ...flows.flatMap((f) => [f.aportes, f.resgates])));
-  const ticks = [max, max / 2, 0];
+  // topo, meio e base do eixo
+  const ticks = [max, max / 2, 0].map((value, i) => ({ value, top: (i / 2) * HEIGHT }));
   const current = flows.find((f) => f.month === active) ?? null;
   const h = (v: number) => (v > 0 ? Math.max(3, (v / max) * HEIGHT) : 0);
 
@@ -33,25 +33,20 @@ export function FlowChart({ flows }: { flows: MonthFlow[] }) {
       </p>
       <div className="flex">
         <div className="relative w-10 shrink-0 text-[11px] text-muted" style={{ height: HEIGHT }} aria-hidden>
-          {ticks.map((t, i) => (
-            <span key={i} className="num absolute right-2 -translate-y-1/2" style={{ top: (i / (ticks.length - 1)) * HEIGHT }}>
-              {compact.format(t)}
+          {ticks.map((t) => (
+            <span key={t.top} className="num absolute right-2 -translate-y-1/2" style={{ top: t.top }}>
+              {compact.format(t.value)}
             </span>
           ))}
         </div>
         <div className="relative flex-1">
           <div className="pointer-events-none absolute inset-x-0 top-0" style={{ height: HEIGHT }} aria-hidden>
-            {ticks.map((_, i) => (
-              <span
-                key={i}
-                className="absolute inset-x-0 border-t border-dashed border-line"
-                style={{ top: (i / (ticks.length - 1)) * HEIGHT }}
-              />
+            {ticks.map((t) => (
+              <span key={t.top} className="absolute inset-x-0 border-t border-dashed border-line" style={{ top: t.top }} />
             ))}
           </div>
           <div className="relative flex">
             {flows.map((f) => {
-              const { month } = parts(f.month);
               const on = active === f.month;
               return (
                 <button
@@ -67,7 +62,7 @@ export function FlowChart({ flows }: { flows: MonthFlow[] }) {
                     <span className="w-3 rounded-t bg-brand sm:w-4" style={{ height: h(f.aportes) }} />
                     <span className="w-3 rounded-t bg-expense sm:w-4" style={{ height: h(f.resgates) }} />
                   </span>
-                  <span className={`py-1.5 text-xs ${on ? "font-semibold text-ink" : "text-muted"}`}>{MONTHS_SHORT[month - 1]}</span>
+                  <span className={`py-1.5 text-xs ${on ? "font-semibold text-ink" : "text-muted"}`}>{shortMonth(f.month)}</span>
                 </button>
               );
             })}

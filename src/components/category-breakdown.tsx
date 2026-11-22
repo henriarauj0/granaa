@@ -3,10 +3,10 @@
 import { ChevronDown, ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { categoryItems, expensesByCategory } from "@/lib/finance";
+import { NO_CATEGORY, NO_CATEGORY_COLOR, categoryItems, expensesByCategory } from "@/lib/finance";
 import { formatMoney } from "@/lib/money";
 import { useData } from "./data-provider";
-import { Donut } from "./donut";
+import { categorySlices, Donut, visible } from "./donut";
 import { TransactionRow } from "./transaction-row";
 
 const VISIBLE = 8;
@@ -41,12 +41,7 @@ export function CategoryBreakdown({ month }: { month: string }) {
     <>
       <Donut
         label="Gastos por categoria"
-        slices={rows.map((r) => ({
-          key: r.key,
-          label: r.category?.name ?? "Sem categoria",
-          value: r.total,
-          color: r.category?.color ?? "#8c9690",
-        }))}
+        slices={categorySlices(rows)}
         selected={openKey}
         onSelect={select}
       />
@@ -55,7 +50,7 @@ export function CategoryBreakdown({ month }: { month: string }) {
         {shown.map((row) => {
           const expanded = row.key === openKey;
           const panelId = `categoria-${row.key}`;
-          const name = row.category?.name ?? "Sem categoria";
+          const name = row.category?.name ?? NO_CATEGORY;
           return (
             <li key={row.key}>
               <button
@@ -67,7 +62,7 @@ export function CategoryBreakdown({ month }: { month: string }) {
               >
                 <span className="mb-1 flex items-center justify-between gap-2 text-sm">
                   <span className="flex min-w-0 items-center gap-2">
-                    <span className="size-2.5 shrink-0 rounded-full" style={{ background: row.category?.color ?? "var(--muted)" }} aria-hidden />
+                    <span className="size-2.5 shrink-0 rounded-full" style={{ background: visible(row.category?.color ?? NO_CATEGORY_COLOR) }} aria-hidden />
                     <span className="truncate">{name}</span>
                   </span>
                   <span className="flex shrink-0 items-center gap-1">
