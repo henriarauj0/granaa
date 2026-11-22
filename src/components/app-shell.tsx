@@ -1,6 +1,6 @@
 "use client";
 
-import { CreditCard, Home, ListOrdered, Plus, Target } from "lucide-react";
+import { ChartNoAxesColumn, CreditCard, Home, ListOrdered, Plus, Target } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, type ReactNode } from "react";
@@ -15,6 +15,7 @@ const NAV = [
   { href: "/inicio", label: "Início", icon: Home },
   { href: "/lancamentos", label: "Lançamentos", icon: ListOrdered },
   { href: "/cartoes", label: "Cartões", icon: CreditCard },
+  { href: "/investimentos", label: "Investir", icon: ChartNoAxesColumn },
   { href: "/metas", label: "Metas", icon: Target },
 ];
 
@@ -65,22 +66,23 @@ function BottomNav() {
   const isActive = (href: string) => pathname === href || pathname.startsWith(href + "/");
   const left = NAV.slice(0, 2);
   const right = NAV.slice(2);
+  // seis itens com o botão central: o rótulo encolhe para caber em telas de 360px
   const item = ({ href, label, icon: Icon }: (typeof NAV)[number]) => (
     <Link
       key={href}
       href={href}
       aria-current={isActive(href) ? "page" : undefined}
-      className="flex flex-1 flex-col items-center gap-0.5 py-2 text-[11px] font-medium text-muted aria-[current=page]:text-brand"
+      className={`flex min-w-0 flex-col ${label.length > 8 ? "flex-[1.4]" : "flex-1"} items-center gap-0.5 py-2 text-[10px] font-medium tracking-tight text-muted aria-[current=page]:text-brand min-[400px]:text-[11px] min-[400px]:tracking-normal`}
     >
       <Icon className="size-6" strokeWidth={isActive(href) ? 2.4 : 1.8} />
-      {label}
+      <span className="max-w-full truncate">{label}</span>
     </Link>
   );
   return (
     <nav aria-label="Navegação principal" className="safe-bottom fixed inset-x-0 bottom-0 z-40 border-t border-line bg-surface/95 backdrop-blur">
-      <div className="mx-auto flex max-w-2xl items-center px-2">
+      <div className="mx-auto flex max-w-2xl items-center px-0.5">
         {left.map(item)}
-        <div className="flex flex-1 justify-center">
+        <div className="flex w-16 shrink-0 justify-center min-[400px]:w-auto min-[400px]:flex-1">
           <Link
             href="/lancamentos/novo"
             aria-label="Novo lançamento"

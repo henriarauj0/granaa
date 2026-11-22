@@ -39,9 +39,13 @@ O arquivo é lido no próprio aparelho. Só os lançamentos que você confirmar 
 
 **Painel inicial.** Saldo total, receitas e despesas do mês, faturas abertas, gastos por categoria, metas e últimos lançamentos. Ao tocar numa categoria, o painel lista os lançamentos que formam aquele total, do maior para o menor, e leva à tela de lançamentos já filtrada pela categoria e pelo mês.
 
+**Investimentos.** Cadastre cada investimento com a classe (renda fixa, Tesouro Direto, ações, fundos imobiliários, ETFs e exterior, fundos, previdência, criptomoedas ou outros) e o valor de hoje, e registre aportes, resgates e atualizações de saldo. A tela mostra o patrimônio, a maior posição, o aporte médio mensal dos últimos 12 meses, a distribuição da carteira por ativo ou por classe e um gráfico de aportes e resgates dos últimos seis meses. O valor de cada investimento parte do último saldo informado, somando os aportes e subtraindo os resgates feitos depois dele. Os investimentos não movimentam as contas nem entram nas despesas.
+
 **Exportação para planilha.** Na tela de lançamentos, o botão **Exportar planilha** gera um arquivo .xlsx com o que está na tela (mês e filtros aplicados) ou com todo o histórico. A planilha tem duas abas: a lista de lançamentos, com data, descrição, tipo, categoria, conta ou cartão, parcela, valor e observações, e um resumo com receitas, despesas, resultado e gastos por categoria. O arquivo é gerado no próprio aparelho e abre no Excel, no Google Planilhas e no Numbers.
 
-**Modo claro e escuro**, seguindo a configuração do aparelho.
+**Aparência.** Em **Mais → Aparência**, escolha o tema verde (claro), o escuro (fundo preto com destaques em verde-água) ou o automático, que segue a configuração do aparelho. A escolha fica salva no aparelho.
+
+**Gráficos.** Os gastos por categoria aparecem num gráfico de rosca no painel inicial e na tela de lançamentos. Tocar numa fatia abre a categoria no painel ou filtra a lista de lançamentos.
 
 <p align="center">
   <img src="docs/telas/novo-lancamento.png" width="230" alt="Novo lançamento parcelado no cartão">
@@ -146,6 +150,7 @@ npm run typecheck && npm run lint && npm run build
 | `src/lib/finance.ts` | Faturas, saldos, resumo do mês e metas |
 | `src/lib/import/` | Leitura de OFX, CSV e XLS, categorização e detecção de transferências e estornos |
 | `src/lib/export/` | Geração da planilha .xlsx exportada |
+| `src/lib/investments.ts` | Valor dos investimentos, distribuição, aporte médio e fluxo mensal |
 | `src/lib/api.ts` | Gravação no banco de dados |
 | `src/app/(auth)/` | Entrar, cadastro e recuperação de senha |
 | `src/app/(app)/` | Telas do app (início, lançamentos, cartões, metas, contas, categorias, importação) |

@@ -6,6 +6,21 @@ export function formatMoney(value: number): string {
   return brl.format(Math.abs(value) < 0.005 ? 0 : value);
 }
 
+const whole = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
+const short = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", notation: "compact", maximumFractionDigits: 1 });
+
+/** Reais sem centavos, para resumos compactos. */
+export function wholeMoney(value: number): string {
+  return whole.format(Math.round(value));
+}
+
+/** Valor que cabe no miolo da rosca: sem centavos acima de mil, abreviado acima de um milhão. */
+export function centerMoney(value: number): string {
+  if (value >= 1_000_000) return short.format(value);
+  if (value >= 1_000) return whole.format(value);
+  return formatMoney(value);
+}
+
 export function formatAmount(value: number): string {
   return plain.format(value);
 }

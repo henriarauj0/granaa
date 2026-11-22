@@ -5,11 +5,12 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useMemo, useState } from "react";
 import { useData } from "@/components/data-provider";
+import { Donut } from "@/components/donut";
 import { ExportSheet } from "@/components/export-sheet";
 import { TransactionRow } from "@/components/transaction-row";
 import { EmptyState, Money, MonthSwitcher, PageHeader } from "@/components/ui";
 import { currentMonth, dayHeading, monthKey, monthLabel } from "@/lib/dates";
-import { monthSummary } from "@/lib/finance";
+import { categoryTotals, monthSummary } from "@/lib/finance";
 import { normalizeDescription } from "@/lib/import/categorize";
 import { formatMoney } from "@/lib/money";
 import type { Transaction } from "@/lib/types";
@@ -55,7 +56,8 @@ function Lancamentos() {
   });
   const [exporting, setExporting] = useState(false);
 
-  const filtered = useMemo(() => {
+  // todos os filtros menos a categoria: base do gráfico, que serve para escolher a categoria
+  const base = useMemo(() => {
     const q = normalizeDescription(query);
     return transactions.filter((t) => {
       if (monthKey(t.date) !== month) return false;
@@ -64,12 +66,22 @@ function Lancamentos() {
       if (kind === "other" && (t.kind === "income" || t.kind === "expense")) return false;
       if (source.startsWith("a:") && t.account_id !== source.slice(2) && t.to_account_id !== source.slice(2)) return false;
       if (source.startsWith("c:") && t.card_id !== source.slice(2)) return false;
-      if (category === "none" && t.category_id) return false;
-      if (category && category !== "none" && t.category_id !== category) return false;
       if (q && !normalizeDescription(t.description).includes(q)) return false;
       return true;
     });
-  }, [transactions, month, query, kind, source, category]);
+  }, [transactions, month, query, kind, source]);
+
+  const filtered = useMemo(
+    () =>
+      base.filter((t) => {
+        if (category === "none" && t.category_id) return false;
+        if (category && category !== "none" && t.category_id !== category) return false;
+        return true;
+      }),
+    [base, category],
+  );
+
+  const byCategory = useMemo(() => categoryTotals(base, categories), [base, categories]);
 
   const groups = useMemo(() => {
     const map = new Map<string, Transaction[]>();
@@ -161,6 +173,25 @@ function Lancamentos() {
             <p className="num text-sm font-semibold">{formatMoney(summary.balance)}</p>
           </div>
         </div>
+
+        {byCategory.length > 0 && kind !== "income" && kind !== "other" ? (
+          <section className="card p-4" aria-labelledby="graf-h">
+            <h2 id="graf-h" className="mb-3 text-sm font-semibold text-ink-2">
+              Despesas por categoria
+            </h2>
+            <Donut
+              label="Despesas por categoria"
+              slices={byCategory.map((r) => ({
+                key: r.key,
+                label: r.category?.name ?? "Sem categoria",
+                value: r.total,
+                color: r.category?.color ?? "#8c9690",
+              }))}
+              selected={category || null}
+              onSelect={(key) => setCategory(key ?? "")}
+            />
+          </section>
+        ) : null}
 
         <div className="flex items-center justify-between pl-2">
           <p className="text-sm text-muted">

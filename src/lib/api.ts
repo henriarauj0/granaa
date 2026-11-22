@@ -2,7 +2,17 @@ import { addMonths } from "./dates";
 import { invoiceMonthFor } from "./finance";
 import { cents, splitInstallments } from "./money";
 import { getSupabase } from "./supabase";
-import type { Account, Category, CreditCard, Goal, NewTransaction, Transaction, TransactionKind } from "./types";
+import type {
+  Account,
+  Category,
+  CreditCard,
+  Goal,
+  Investment,
+  InvestmentMovement,
+  NewTransaction,
+  Transaction,
+  TransactionKind,
+} from "./types";
 
 function check<T>(res: { data: T; error: { message: string } | null }): T {
   if (res.error) throw new Error(translateDbError(res.error.message));
@@ -167,6 +177,36 @@ export async function setGoalSaved(id: string, saved: number) {
 }
 export async function deleteGoal(id: string) {
   check(await getSupabase().from("goals").delete().eq("id", id));
+}
+
+// ---------------------------------------------------------------------------
+// Investimentos
+// ---------------------------------------------------------------------------
+
+type InvestmentInput = Pick<Investment, "name" | "asset_class" | "institution">;
+/** Cria ou altera o ativo; devolve o id. */
+export async function saveInvestment(input: InvestmentInput, id?: string): Promise<string> {
+  const supabase = getSupabase();
+  if (id) {
+    check(await supabase.from("investments").update(input).eq("id", id));
+    return id;
+  }
+  const row = check(await supabase.from("investments").insert(input).select("id").single());
+  return (row as { id: string }).id;
+}
+export async function deleteInvestment(id: string) {
+  check(await getSupabase().from("investments").delete().eq("id", id));
+}
+
+type MovementInput = Pick<InvestmentMovement, "investment_id" | "kind" | "amount" | "date" | "notes">;
+export async function saveMovement(input: MovementInput, id?: string) {
+  const supabase = getSupabase();
+  const row = { ...input, amount: cents(input.amount) };
+  if (id) check(await supabase.from("investment_movements").update(row).eq("id", id));
+  else check(await supabase.from("investment_movements").insert(row));
+}
+export async function deleteMovement(id: string) {
+  check(await getSupabase().from("investment_movements").delete().eq("id", id));
 }
 
 export async function updateProfileName(userId: string, fullName: string) {

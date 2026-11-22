@@ -2,7 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { getSupabase } from "@/lib/supabase";
-import type { Account, Category, CreditCard, Goal, Profile, Transaction } from "@/lib/types";
+import type { Account, Category, CreditCard, Goal, Investment, InvestmentMovement, Profile, Transaction } from "@/lib/types";
 import { useAuth } from "./auth-provider";
 
 export interface AppData {
@@ -12,6 +12,10 @@ export interface AppData {
   categories: Category[];
   transactions: Transaction[];
   goals: Goal[];
+  investments: Investment[];
+  movements: InvestmentMovement[];
+  /** false quando a migração de investimentos ainda não foi rodada no banco */
+  investmentsReady: boolean;
 }
 
 interface DataState extends AppData {
@@ -23,7 +27,17 @@ interface DataState extends AppData {
   cardById: Map<string, CreditCard>;
 }
 
-const empty: AppData = { profile: null, accounts: [], cards: [], categories: [], transactions: [], goals: [] };
+const empty: AppData = {
+  profile: null,
+  accounts: [],
+  cards: [],
+  categories: [],
+  transactions: [],
+  goals: [],
+  investments: [],
+  movements: [],
+  investmentsReady: true,
+};
 
 const DataContext = createContext<DataState | null>(null);
 
@@ -47,15 +61,39 @@ async function fetchAllTransactions(): Promise<Transaction[]> {
   return all;
 }
 
+/** Tabela inexistente: Postgres 42P01 ou PostgREST PGRST205 (fora do cache do esquema). */
+function isMissingTable(error: { code?: string; message?: string } | null): boolean {
+  if (!error) return false;
+  return error.code === "42P01" || error.code === "PGRST205" || /does not exist|schema cache/i.test(error.message ?? "");
+}
+
+async function fetchInvestments(): Promise<Pick<AppData, "investments" | "movements" | "investmentsReady">> {
+  const supabase = getSupabase();
+  const [investments, movements] = await Promise.all([
+    supabase.from("investments").select("*").order("created_at"),
+    supabase.from("investment_movements").select("*").order("date", { ascending: false }).order("created_at", { ascending: false }),
+  ]);
+  if (isMissingTable(investments.error) || isMissingTable(movements.error)) {
+    return { investments: [], movements: [], investmentsReady: false };
+  }
+  for (const r of [investments, movements]) if (r.error) throw r.error;
+  return {
+    investments: investments.data as Investment[],
+    movements: (movements.data as InvestmentMovement[]).map((m) => ({ ...m, amount: num(m.amount) })),
+    investmentsReady: true,
+  };
+}
+
 async function fetchAll(userId: string): Promise<AppData> {
   const supabase = getSupabase();
-  const [profile, accounts, cards, categories, goals, transactions] = await Promise.all([
+  const [profile, accounts, cards, categories, goals, transactions, invest] = await Promise.all([
     supabase.from("profiles").select("id, full_name").eq("id", userId).maybeSingle(),
     supabase.from("accounts").select("*").order("created_at"),
     supabase.from("credit_cards").select("*").order("created_at"),
     supabase.from("categories").select("id, name, kind, color").order("name"),
     supabase.from("goals").select("*").order("created_at"),
     fetchAllTransactions(),
+    fetchInvestments(),
   ]);
   for (const r of [profile, accounts, cards, categories, goals]) if (r.error) throw r.error;
   return {
@@ -69,6 +107,7 @@ async function fetchAll(userId: string): Promise<AppData> {
       saved_amount: num(g.saved_amount),
     })),
     transactions,
+    ...invest,
   };
 }
 

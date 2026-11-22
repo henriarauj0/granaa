@@ -6,6 +6,7 @@ import { useMemo, useState } from "react";
 import { categoryItems, expensesByCategory } from "@/lib/finance";
 import { formatMoney } from "@/lib/money";
 import { useData } from "./data-provider";
+import { Donut } from "./donut";
 import { TransactionRow } from "./transaction-row";
 
 const VISIBLE = 8;
@@ -31,9 +32,25 @@ export function CategoryBreakdown({ month }: { month: string }) {
   const shown = showAll ? rows : rows.slice(0, VISIBLE);
   const max = rows[0].total;
 
+  function select(key: string | null) {
+    setOpen(key ? { month, key } : null);
+    if (key && rows.findIndex((r) => r.key === key) >= VISIBLE) setShowAll(true);
+  }
+
   return (
     <>
-      <p className="mb-2 text-xs text-muted">Toque numa categoria para ver cada gasto.</p>
+      <Donut
+        label="Gastos por categoria"
+        slices={rows.map((r) => ({
+          key: r.key,
+          label: r.category?.name ?? "Sem categoria",
+          value: r.total,
+          color: r.category?.color ?? "#8c9690",
+        }))}
+        selected={openKey}
+        onSelect={select}
+      />
+      <p className="mb-2 mt-4 text-xs text-muted">Toque numa categoria para ver cada gasto.</p>
       <ul className="-mx-2 space-y-1">
         {shown.map((row) => {
           const expanded = row.key === openKey;

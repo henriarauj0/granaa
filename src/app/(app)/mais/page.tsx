@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useAuth } from "@/components/auth-provider";
 import { useData } from "@/components/data-provider";
+import { ThemePicker } from "@/components/theme-picker";
 import { Button, ErrorBox, Field, PageHeader } from "@/components/ui";
 import { updateProfileName } from "@/lib/api";
 import { getSupabase } from "@/lib/supabase";
@@ -13,7 +14,7 @@ import { getSupabase } from "@/lib/supabase";
 const LINKS = [
   { href: "/contas", label: "Contas", text: "Bancos, carteira e poupança", icon: Landmark },
   { href: "/categorias", label: "Categorias", text: "Organize receitas e despesas", icon: Tags },
-  { href: "/importar", label: "Importar extrato", text: "Arquivos OFX ou CSV do banco", icon: Upload },
+  { href: "/importar", label: "Importar extrato", text: "Arquivos OFX, CSV ou XLS do banco", icon: Upload },
 ];
 
 export default function MaisPage() {
@@ -63,6 +64,12 @@ export default function MaisPage() {
           </Link>
         ))}
       </div>
+
+      <section className="card mt-6 p-5">
+        <h2 className="mb-1 font-bold">Aparência</h2>
+        <p className="mb-4 text-sm text-muted">No automático, o app segue o modo claro ou escuro do aparelho.</p>
+        <ThemePicker />
+      </section>
 
       <section className="card mt-6 p-5">
         <h2 className="mb-1 font-bold">Seu perfil</h2>
