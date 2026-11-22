@@ -138,16 +138,15 @@ export interface MonthSummary {
 }
 
 /**
- * Receitas e despesas do mês por data de lançamento.
+ * Receitas e despesas por data de lançamento.
  * Compras no cartão contam como despesa na data da compra (ou da parcela);
  * pagamentos de fatura e transferências não entram, para não contar em dobro.
  * Créditos/estornos no cartão abatem despesas.
  */
-export function monthSummary(transactions: Transaction[], month: string): MonthSummary {
+export function periodSummary(transactions: Transaction[]): MonthSummary {
   let income = 0;
   let expense = 0;
   for (const t of transactions) {
-    if (monthKey(t.date) !== month) continue;
     if (t.kind === "income") {
       if (t.card_id) expense -= t.amount;
       else income += t.amount;
@@ -156,10 +155,51 @@ export function monthSummary(transactions: Transaction[], month: string): MonthS
   return { income: cents(income), expense: cents(expense), balance: cents(income - expense) };
 }
 
+export function monthSummary(transactions: Transaction[], month: string): MonthSummary {
+  return periodSummary(transactions.filter((t) => monthKey(t.date) === month));
+}
+
+/**
+ * Quanto o lançamento pesa nos gastos por categoria: despesas somam,
+ * estornos no cartão abatem e o resto (receitas, transferências e
+ * pagamentos de fatura) não entra.
+ */
+export function expenseWeight(t: Transaction): number {
+  if (t.kind === "expense") return t.amount;
+  if (t.kind === "income" && t.card_id) return -t.amount;
+  return 0;
+}
+
+/** Chave da categoria nos agrupamentos: o id ou "none" para sem categoria. */
+export const categoryKey = (t: Pick<Transaction, "category_id">) => t.category_id ?? "none";
+
 export interface CategoryTotal {
+  /** id da categoria ou "none" */
+  key: string;
   category: Category | null;
   total: number;
   share: number;
+  count: number;
+}
+
+export function categoryTotals(transactions: Transaction[], categories: Category[]): CategoryTotal[] {
+  const byId = new Map(categories.map((c) => [c.id, c]));
+  const totals = new Map<string, { total: number; count: number }>();
+  for (const t of transactions) {
+    const value = expenseWeight(t);
+    if (value === 0) continue;
+    const key = categoryKey(t);
+    const acc = totals.get(key) ?? { total: 0, count: 0 };
+    acc.total += value;
+    acc.count += 1;
+    totals.set(key, acc);
+  }
+  const rows = [...totals.entries()]
+    .map(([key, { total, count }]) => ({ key, category: byId.get(key) ?? null, total: cents(total), count }))
+    .filter((r) => r.total > 0)
+    .sort((a, b) => b.total - a.total);
+  const sum = rows.reduce((acc, r) => acc + r.total, 0);
+  return rows.map((r) => ({ ...r, share: sum > 0 ? r.total / sum : 0 }));
 }
 
 export function expensesByCategory(
@@ -167,23 +207,20 @@ export function expensesByCategory(
   categories: Category[],
   month: string,
 ): CategoryTotal[] {
-  const byId = new Map(categories.map((c) => [c.id, c]));
-  const totals = new Map<string, number>();
-  for (const t of transactions) {
-    if (monthKey(t.date) !== month) continue;
-    let value = 0;
-    if (t.kind === "expense") value = t.amount;
-    else if (t.kind === "income" && t.card_id) value = -t.amount;
-    else continue;
-    const key = t.category_id ?? "none";
-    totals.set(key, (totals.get(key) ?? 0) + value);
-  }
-  const rows = [...totals.entries()]
-    .map(([key, total]) => ({ category: byId.get(key) ?? null, total: cents(total) }))
-    .filter((r) => r.total > 0)
-    .sort((a, b) => b.total - a.total);
-  const sum = rows.reduce((acc, r) => acc + r.total, 0);
-  return rows.map((r) => ({ ...r, share: sum > 0 ? r.total / sum : 0 }));
+  return categoryTotals(
+    transactions.filter((t) => monthKey(t.date) === month),
+    categories,
+  );
+}
+
+/**
+ * Lançamentos que formam o total de uma categoria no mês, do maior para o
+ * menor valor. Inclui os estornos no cartão, que aparecem por último.
+ */
+export function categoryItems(transactions: Transaction[], month: string, key: string): Transaction[] {
+  return transactions
+    .filter((t) => monthKey(t.date) === month && categoryKey(t) === key && expenseWeight(t) !== 0)
+    .sort((a, b) => expenseWeight(b) - expenseWeight(a) || b.date.localeCompare(a.date));
 }
 
 // ---------------------------------------------------------------------------

@@ -3,6 +3,7 @@
 import { ArrowDownRight, ArrowUpRight, ChevronRight, CreditCard, Settings, Target, Upload, Wallet } from "lucide-react";
 import Link from "next/link";
 import { useMemo, useState } from "react";
+import { CategoryBreakdown } from "@/components/category-breakdown";
 import { useData } from "@/components/data-provider";
 import { TransactionRow } from "@/components/transaction-row";
 import { Badge, EmptyState, Money, MonthSwitcher, ProgressBar } from "@/components/ui";
@@ -10,7 +11,6 @@ import { currentMonth, fullDate, monthKey } from "@/lib/dates";
 import {
   accountBalance,
   currentInvoiceMonth,
-  expensesByCategory,
   goalProgress,
   invoiceSummary,
   monthSummary,
@@ -18,14 +18,13 @@ import {
 import { formatMoney } from "@/lib/money";
 
 export default function InicioPage() {
-  const { profile, accounts, cards, categories, transactions, goals } = useData();
+  const { profile, accounts, cards, transactions, goals } = useData();
   const [month, setMonth] = useState(currentMonth());
 
   const firstName = profile?.full_name?.split(" ")[0] ?? "";
   const activeAccounts = accounts.filter((a) => !a.archived);
   const totalBalance = activeAccounts.reduce((sum, a) => sum + accountBalance(a, transactions), 0);
   const summary = useMemo(() => monthSummary(transactions, month), [transactions, month]);
-  const byCategory = useMemo(() => expensesByCategory(transactions, categories, month), [transactions, categories, month]);
   const monthTx = transactions.filter((t) => monthKey(t.date) === month).slice(0, 6);
   const activeCards = cards.filter((c) => !c.archived);
 
@@ -117,31 +116,7 @@ export default function InicioPage() {
       <section aria-labelledby="cat-h">
         <SectionTitle id="cat-h" title="Gastos por categoria" />
         <div className="card p-4">
-          {byCategory.length === 0 ? (
-            <p className="py-4 text-center text-sm text-muted">Nenhum gasto neste mês.</p>
-          ) : (
-            <ul className="space-y-3">
-              {byCategory.slice(0, 8).map((row) => (
-                <li key={row.category?.id ?? "none"}>
-                  <div className="mb-1 flex items-center justify-between gap-2 text-sm">
-                    <span className="flex min-w-0 items-center gap-2">
-                      <span className="size-2.5 shrink-0 rounded-full" style={{ background: row.category?.color ?? "var(--muted)" }} aria-hidden />
-                      <span className="truncate">{row.category?.name ?? "Sem categoria"}</span>
-                    </span>
-                    <span className="num shrink-0 text-ink-2">
-                      <strong className="text-ink">{formatMoney(row.total)}</strong> · {Math.round(row.share * 100)}%
-                    </span>
-                  </div>
-                  <div className="h-2 overflow-hidden rounded-full bg-surface-2">
-                    <div
-                      className="h-full rounded-full bg-brand"
-                      style={{ width: `${Math.max(2, (row.total / byCategory[0].total) * 100)}%` }}
-                    />
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
+          <CategoryBreakdown month={month} />
         </div>
       </section>
 

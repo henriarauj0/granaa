@@ -1,12 +1,14 @@
 "use client";
 
-import { ListOrdered, Search, Upload } from "lucide-react";
+import { Download, ListOrdered, Search, Upload } from "lucide-react";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { Suspense, useMemo, useState } from "react";
 import { useData } from "@/components/data-provider";
+import { ExportSheet } from "@/components/export-sheet";
 import { TransactionRow } from "@/components/transaction-row";
 import { EmptyState, Money, MonthSwitcher, PageHeader } from "@/components/ui";
-import { currentMonth, dayHeading, monthKey } from "@/lib/dates";
+import { currentMonth, dayHeading, monthKey, monthLabel } from "@/lib/dates";
 import { monthSummary } from "@/lib/finance";
 import { normalizeDescription } from "@/lib/import/categorize";
 import { formatMoney } from "@/lib/money";
@@ -14,13 +16,44 @@ import type { Transaction } from "@/lib/types";
 
 type KindFilter = "all" | "expense" | "income" | "other";
 
+const KIND_LABEL: Record<KindFilter, string> = {
+  all: "Todos",
+  expense: "Despesas",
+  income: "Receitas",
+  other: "Transferências e faturas",
+};
+
 export default function LancamentosPage() {
+  // useSearchParams exige um Suspense em volta para o build estático
+  return (
+    <Suspense fallback={null}>
+      <Lancamentos />
+    </Suspense>
+  );
+}
+
+/**
+ * Aceita filtros iniciais pela URL, usados pelo painel inicial:
+ * /lancamentos?mes=2026-11&categoria=<id ou none>&tipo=expense
+ */
+function Lancamentos() {
+  const params = useSearchParams();
   const { transactions, accounts, cards, categories } = useData();
-  const [month, setMonth] = useState(currentMonth());
+  const [month, setMonth] = useState(() => {
+    const mes = params.get("mes");
+    return mes && /^\d{4}-(0[1-9]|1[0-2])$/.test(mes) ? `${mes}-01` : currentMonth();
+  });
   const [query, setQuery] = useState("");
-  const [kind, setKind] = useState<KindFilter>("all");
+  const [kind, setKind] = useState<KindFilter>(() => {
+    const tipo = params.get("tipo");
+    return tipo && tipo in KIND_LABEL ? (tipo as KindFilter) : "all";
+  });
   const [source, setSource] = useState("");
-  const [category, setCategory] = useState("");
+  const [category, setCategory] = useState(() => {
+    const id = params.get("categoria");
+    return id === "none" || categories.some((c) => c.id === id) ? id! : "";
+  });
+  const [exporting, setExporting] = useState(false);
 
   const filtered = useMemo(() => {
     const q = normalizeDescription(query);
@@ -49,6 +82,16 @@ export default function LancamentosPage() {
   }, [filtered]);
 
   const summary = monthSummary(filtered, month);
+
+  const filterText = [
+    kind !== "all" ? KIND_LABEL[kind] : null,
+    source.startsWith("a:") ? accounts.find((a) => a.id === source.slice(2))?.name : null,
+    source.startsWith("c:") ? cards.find((c) => c.id === source.slice(2))?.name : null,
+    category === "none" ? "Sem categoria" : category ? categories.find((c) => c.id === category)?.name : null,
+    query.trim() ? `busca "${query.trim()}"` : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
 
   return (
     <>
@@ -118,7 +161,29 @@ export default function LancamentosPage() {
             <p className="num text-sm font-semibold">{formatMoney(summary.balance)}</p>
           </div>
         </div>
+
+        <div className="flex items-center justify-between pl-2">
+          <p className="text-sm text-muted">
+            {filtered.length === 1 ? "1 lançamento" : `${filtered.length} lançamentos`}
+          </p>
+          <button
+            type="button"
+            onClick={() => setExporting(true)}
+            className="inline-flex min-h-11 items-center gap-1.5 rounded-full px-3 text-sm font-semibold text-brand hover:bg-surface-2"
+          >
+            <Download className="size-4" /> Exportar planilha
+          </button>
+        </div>
       </div>
+
+      <ExportSheet
+        open={exporting}
+        onClose={() => setExporting(false)}
+        visible={filtered}
+        visibleLabel={monthLabel(month)}
+        filters={filterText}
+        month={month}
+      />
 
       <div className="mt-5 space-y-5">
         {groups.length === 0 ? (

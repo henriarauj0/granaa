@@ -37,7 +37,9 @@ O Granaa é um aplicativo web que pode ser instalado na tela inicial do celular,
 
 O arquivo é lido no próprio aparelho. Só os lançamentos que você confirmar são enviados ao banco de dados.
 
-**Painel inicial.** Saldo total, receitas e despesas do mês, faturas abertas, gastos por categoria, metas e últimos lançamentos.
+**Painel inicial.** Saldo total, receitas e despesas do mês, faturas abertas, gastos por categoria, metas e últimos lançamentos. Ao tocar numa categoria, o painel lista os lançamentos que formam aquele total, do maior para o menor, e leva à tela de lançamentos já filtrada pela categoria e pelo mês.
+
+**Exportação para planilha.** Na tela de lançamentos, o botão **Exportar planilha** gera um arquivo .xlsx com o que está na tela (mês e filtros aplicados) ou com todo o histórico. A planilha tem duas abas: a lista de lançamentos, com data, descrição, tipo, categoria, conta ou cartão, parcela, valor e observações, e um resumo com receitas, despesas, resultado e gastos por categoria. O arquivo é gerado no próprio aparelho e abre no Excel, no Google Planilhas e no Numbers.
 
 **Modo claro e escuro**, seguindo a configuração do aparelho.
 
@@ -134,7 +136,7 @@ npm run typecheck && npm run lint && npm run build
 
 ### Tecnologias
 
-[Next.js](https://nextjs.org) e React, [Tailwind CSS](https://tailwindcss.com), [Supabase](https://supabase.com) (Postgres, autenticação e Row Level Security), [Lucide](https://lucide.dev) para os ícones e [Vitest](https://vitest.dev) para os testes. A leitura de arquivos .xls é feita por um leitor próprio, sem dependências externas.
+[Next.js](https://nextjs.org) e React, [Tailwind CSS](https://tailwindcss.com), [Supabase](https://supabase.com) (Postgres, autenticação e Row Level Security), [Lucide](https://lucide.dev) para os ícones e [Vitest](https://vitest.dev) para os testes. A leitura de arquivos .xls e a geração de arquivos .xlsx são feitas por código próprio, sem dependências externas.
 
 ### Estrutura
 
@@ -143,6 +145,7 @@ npm run typecheck && npm run lint && npm run build
 | `supabase/migrations/` | Tabelas, regras de segurança e dados iniciais de cada novo usuário |
 | `src/lib/finance.ts` | Faturas, saldos, resumo do mês e metas |
 | `src/lib/import/` | Leitura de OFX, CSV e XLS, categorização e detecção de transferências e estornos |
+| `src/lib/export/` | Geração da planilha .xlsx exportada |
 | `src/lib/api.ts` | Gravação no banco de dados |
 | `src/app/(auth)/` | Entrar, cadastro e recuperação de senha |
 | `src/app/(app)/` | Telas do app (início, lançamentos, cartões, metas, contas, categorias, importação) |
@@ -150,7 +153,7 @@ npm run typecheck && npm run lint && npm run build
 ## Limitações conhecidas
 
 - Não há conexão automática com bancos (Open Finance). Os lançamentos são digitados ou importados de arquivos.
-- Arquivos .xlsx ainda não são aceitos. Salve como .xls ou CSV, ou exporte em OFX.
+- Arquivos .xlsx ainda não são aceitos na importação (a exportação usa .xlsx). Salve o extrato como .xls ou CSV, ou exporte em OFX.
 - Os formatos de CSV variam muito entre bancos. Quando as colunas não são reconhecidas, a tela de importação permite indicá-las manualmente.
 - O app precisa de internet para funcionar.
 - Cada conta é individual: não há, por enquanto, finanças compartilhadas entre duas pessoas.
