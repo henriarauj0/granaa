@@ -235,6 +235,54 @@ export async function deleteMovement(id: string) {
   check(await getSupabase().from("investment_movements").delete().eq("id", id));
 }
 
+// ---------------------------------------------------------------------------
+// Atalho do Apple Pay
+// ---------------------------------------------------------------------------
+
+export interface ShortcutStatus {
+  /** false quando a migração do atalho ainda não foi rodada */
+  ready: boolean;
+  active: boolean;
+  defaultAccountId: string | null;
+  createdAt: string | null;
+  lastUsedAt: string | null;
+}
+
+export async function getShortcutStatus(): Promise<ShortcutStatus> {
+  const { data, error } = await getSupabase()
+    .from("shortcut_keys")
+    .select("default_account_id, created_at, last_used_at")
+    .maybeSingle();
+  if (error) {
+    if (error.code === "42P01" || error.code === "PGRST205" || /does not exist|schema cache/i.test(error.message)) {
+      return { ready: false, active: false, defaultAccountId: null, createdAt: null, lastUsedAt: null };
+    }
+    throw new Error(translateDbError(error.message));
+  }
+  return {
+    ready: true,
+    active: !!data,
+    defaultAccountId: data?.default_account_id ?? null,
+    createdAt: data?.created_at ?? null,
+    lastUsedAt: data?.last_used_at ?? null,
+  };
+}
+
+/** Gera (ou troca) a chave do atalho. Ela só é mostrada esta vez. */
+export async function generateShortcutKey(defaultAccountId: string): Promise<string> {
+  return check(await getSupabase().rpc("gerar_chave_atalho", { conta_padrao: defaultAccountId })) as string;
+}
+
+export async function setShortcutAccount(defaultAccountId: string) {
+  check(await getSupabase().rpc("definir_conta_atalho", { conta_padrao: defaultAccountId }));
+}
+
+export async function deleteShortcutKey() {
+  const supabase = getSupabase();
+  const { data } = await supabase.auth.getUser();
+  check(await supabase.from("shortcut_keys").delete().eq("user_id", data.user?.id ?? ""));
+}
+
 export async function updateProfileName(userId: string, fullName: string) {
   check(await getSupabase().from("profiles").update({ full_name: fullName.trim() }).eq("id", userId));
 }

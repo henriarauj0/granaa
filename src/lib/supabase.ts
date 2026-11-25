@@ -6,6 +6,9 @@ const key =
 
 export const supabaseConfigured = Boolean(url && key);
 
+/** Endereço e chave pública do projeto, usados pelo atalho do Apple Pay. */
+export const supabasePublic = { url: url ?? "", key: key ?? "" };
+
 let client: SupabaseClient | null = null;
 
 export function getSupabase(): SupabaseClient {

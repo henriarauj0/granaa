@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronRight, Landmark, LogOut, Tags, Upload } from "lucide-react";
+import { ChevronRight, Landmark, LogOut, Smartphone, Tags, Upload } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -15,6 +15,7 @@ const LINKS = [
   { href: "/contas", label: "Contas", text: "Bancos, carteira e poupança", icon: Landmark },
   { href: "/categorias", label: "Categorias", text: "Organize receitas e despesas", icon: Tags },
   { href: "/importar", label: "Importar extrato", text: "Arquivos OFX, CSV ou XLS do banco", icon: Upload },
+  { href: "/apple-pay", label: "Apple Pay", text: "Registrar compras por aproximação no iPhone", icon: Smartphone },
 ];
 
 export default function MaisPage() {
