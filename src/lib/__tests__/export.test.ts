@@ -161,3 +161,18 @@ describe("detalhe dos gastos por categoria", () => {
     expect(categoryItems(list, "2026-11-01", "none").map((t) => t.amount)).toEqual([15]);
   });
 });
+
+describe("ícones sugeridos pelo nome", () => {
+  it("acha um ícone para as categorias padrão e para nomes comuns", async () => {
+    const { suggestIcon, iconFor } = await import("../../components/icons");
+    const padrao = [
+      "Alimentação", "Mercado", "Transporte", "Moradia", "Contas da casa", "Saúde", "Cuidados pessoais", "Educação",
+      "Lazer", "Compras", "Assinaturas", "Viagem", "Pets", "Presentes", "Doações", "Impostos e taxas",
+      "Empréstimos e financiamentos", "Saques", "Salário", "Investimentos", "Reembolsos", "Renda extra",
+    ];
+    for (const nome of padrao) expect(iconFor(suggestIcon(nome)), nome).not.toBeNull();
+    expect(suggestIcon("Viagem a Lisboa")).toBe("aviao");
+    expect(suggestIcon("Reserva de emergência")).toBe("cofrinho");
+    expect(suggestIcon("Padaria do bairro")).toBeNull();
+  });
+});

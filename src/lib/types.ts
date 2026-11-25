@@ -13,6 +13,8 @@ export interface Account {
   type: AccountType;
   initial_balance: number;
   color: string;
+  /** chave do ícone na galeria; vazio = automático pelo nome */
+  icon?: string | null;
   archived: boolean;
   created_at: string;
 }
@@ -24,6 +26,8 @@ export interface CreditCard {
   closing_day: number;
   due_day: number;
   color: string;
+  /** chave do ícone na galeria; vazio = automático pelo nome */
+  icon?: string | null;
   archived: boolean;
   created_at: string;
 }
@@ -33,6 +37,8 @@ export interface Category {
   name: string;
   kind: CategoryKind;
   color: string;
+  /** chave do ícone na galeria; vazio = automático pelo nome */
+  icon?: string | null;
 }
 
 export interface Transaction {
@@ -65,6 +71,8 @@ export interface Goal {
   saved_amount: number;
   deadline: string | null;
   color: string;
+  /** chave do ícone na galeria; vazio = automático pelo nome */
+  icon?: string | null;
   created_at: string;
 }
 

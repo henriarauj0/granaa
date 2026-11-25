@@ -45,6 +45,8 @@ O arquivo é lido no próprio aparelho. Só os lançamentos que você confirmar 
 
 **Aparência.** Em **Mais → Aparência**, escolha o tema claro, o escuro (fundo preto com destaques em verde) ou o automático, que segue a configuração do aparelho. A escolha fica salva no aparelho.
 
+**Ícones.** Categorias, contas, cartões e metas podem ter um ícone escolhido numa galeria (casa, mercado, avião, remédio, cofrinho e outros). Sem escolha, o app sugere um ícone pelo nome. O ícone aparece no círculo de cada lançamento, no lugar da inicial da categoria.
+
 **Gráficos.** Os gastos por categoria aparecem num gráfico de rosca no painel inicial e na tela de lançamentos. Tocar numa fatia abre a categoria no painel ou filtra a lista de lançamentos.
 
 <p align="center">

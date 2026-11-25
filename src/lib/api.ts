@@ -24,6 +24,8 @@ function translateDbError(message: string): string {
   if (message.includes("Categoria inválida")) return "Categoria inválida.";
   if (message.includes("categories_user_id_kind_name_key")) return "Já existe uma categoria com esse nome.";
   if (message.includes("Failed to fetch")) return "Sem conexão. Verifique sua internet.";
+  if (/'icon' column|column .*icon/i.test(message))
+    return "Para guardar ícones, rode no Supabase a migração supabase/migrations/20261125000000_icones.sql.";
   return message;
 }
 
@@ -147,7 +149,10 @@ export async function insertImported(rows: NewTransaction[]): Promise<number> {
 // Contas, cartões, categorias e metas
 // ---------------------------------------------------------------------------
 
-type AccountInput = Pick<Account, "name" | "type" | "initial_balance" | "color">;
+/** O ícone só vai junto quando muda, para os formulários funcionarem antes da migração dos ícones. */
+type WithIcon = { icon?: string | null };
+
+type AccountInput = Pick<Account, "name" | "type" | "initial_balance" | "color"> & WithIcon;
 export async function saveAccount(input: AccountInput, id?: string) {
   const supabase = getSupabase();
   if (id) check(await supabase.from("accounts").update(input).eq("id", id));
@@ -160,7 +165,7 @@ export async function deleteAccount(id: string) {
   check(await getSupabase().from("accounts").delete().eq("id", id));
 }
 
-type CardInput = Pick<CreditCard, "name" | "limit_amount" | "closing_day" | "due_day" | "color">;
+type CardInput = Pick<CreditCard, "name" | "limit_amount" | "closing_day" | "due_day" | "color"> & WithIcon;
 export async function saveCard(input: CardInput, id?: string) {
   const supabase = getSupabase();
   if (id) check(await supabase.from("credit_cards").update(input).eq("id", id));
@@ -173,7 +178,7 @@ export async function deleteCard(id: string) {
   check(await getSupabase().from("credit_cards").delete().eq("id", id));
 }
 
-type CategoryInput = Pick<Category, "name" | "kind" | "color">;
+type CategoryInput = Pick<Category, "name" | "kind" | "color"> & WithIcon;
 export async function saveCategory(input: CategoryInput, id?: string) {
   const supabase = getSupabase();
   if (id) check(await supabase.from("categories").update(input).eq("id", id));
@@ -183,7 +188,7 @@ export async function deleteCategory(id: string) {
   check(await getSupabase().from("categories").delete().eq("id", id));
 }
 
-type GoalInput = Pick<Goal, "name" | "target_amount" | "deadline" | "color"> & { saved_amount?: number };
+type GoalInput = Pick<Goal, "name" | "target_amount" | "deadline" | "color"> & WithIcon & { saved_amount?: number };
 export async function saveGoal(input: GoalInput, id?: string) {
   const supabase = getSupabase();
   if (id) check(await supabase.from("goals").update(input).eq("id", id));

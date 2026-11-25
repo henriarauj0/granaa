@@ -3,6 +3,7 @@
 import { Plus, Tags, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { useData } from "@/components/data-provider";
+import { EntityIcon, IconPicker, iconPatch, suggestIcon } from "@/components/icons";
 import { Button, ColorPicker, EmptyState, ErrorBox, Field, IconButton, PageHeader, Segmented, Sheet } from "@/components/ui";
 import { deleteCategory, saveCategory } from "@/lib/api";
 import type { Category, CategoryKind } from "@/lib/types";
@@ -40,7 +41,7 @@ export default function CategoriasPage() {
         ) : (
           list.map((c) => (
             <button key={c.id} onClick={() => setEditing(c)} className="flex w-full items-center gap-3 p-4 text-left hover:bg-surface-2">
-              <span className="size-3 rounded-full" style={{ background: c.color }} aria-hidden />
+              <EntityIcon icon={c.icon} name={c.name} color={c.color} />
               <span className="flex-1 font-medium">{c.name}</span>
               <span className="text-xs text-muted">{usage(c.id)} lanç.</span>
             </button>
@@ -60,6 +61,7 @@ function CategoryForm({ category, kind, usage, onDone }: { category?: Category; 
   const { reload } = useData();
   const [name, setName] = useState(category?.name ?? "");
   const [color, setColor] = useState(category?.color ?? "#2F6FB0");
+  const [icon, setIcon] = useState<string | null>(category?.icon ?? null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -81,12 +83,13 @@ function CategoryForm({ category, kind, usage, onDone }: { category?: Category; 
       onSubmit={(e) => {
         e.preventDefault();
         if (!name.trim()) return setError("Informe o nome.");
-        run(() => saveCategory({ name: name.trim(), kind: category?.kind ?? kind, color }, category?.id));
+        run(() => saveCategory({ name: name.trim(), kind: category?.kind ?? kind, color, ...iconPatch(category?.icon, icon) }, category?.id));
       }}
       className="space-y-4"
     >
       <Field label="Nome">{(id) => <input id={id} className="field" maxLength={40} value={name} onChange={(e) => setName(e.target.value)} />}</Field>
       <Field label="Cor">{() => <ColorPicker value={color} onChange={setColor} />}</Field>
+      <Field label="Ícone">{() => <IconPicker value={icon} onChange={setIcon} color={color} suggested={suggestIcon(name)} />}</Field>
       <ErrorBox>{error}</ErrorBox>
       <Button type="submit" loading={busy} className="w-full">
         Salvar

@@ -90,7 +90,7 @@ async function fetchAll(userId: string): Promise<AppData> {
     supabase.from("profiles").select("id, full_name").eq("id", userId).maybeSingle(),
     supabase.from("accounts").select("*").order("created_at"),
     supabase.from("credit_cards").select("*").order("created_at"),
-    supabase.from("categories").select("id, name, kind, color").order("name"),
+    supabase.from("categories").select("*").order("name"),
     supabase.from("goals").select("*").order("created_at"),
     fetchAllTransactions(),
     fetchInvestments(),

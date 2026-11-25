@@ -2,9 +2,10 @@
 
 import { CreditCard as CardIcon, Plus } from "lucide-react";
 import Link from "next/link";
-import { useState } from "react";
+import { createElement, useState } from "react";
 import { CardForm } from "@/components/card-form";
 import { useData } from "@/components/data-provider";
+import { iconFor } from "@/components/icons";
 import { Button, EmptyState, IconButton, PageHeader, ProgressBar, Sheet } from "@/components/ui";
 import { fullDate } from "@/lib/dates";
 import { cardUsedLimit, currentInvoiceMonth, invoiceSummary } from "@/lib/finance";
@@ -46,7 +47,7 @@ export default function CartoesPage() {
                 <div className="p-5 text-white" style={{ background: `linear-gradient(135deg, ${card.color}, color-mix(in oklab, ${card.color} 70%, black))` }}>
                   <div className="flex items-start justify-between">
                     <p className="text-lg font-bold">{card.name}</p>
-                    <CardIcon className="size-6 opacity-80" />
+                    <CardGlyph icon={card.icon} />
                   </div>
                   <p className="mt-6 text-xs opacity-80">Fatura atual</p>
                   <p className="num text-3xl font-bold">{formatMoney(inv.total)}</p>
@@ -89,4 +90,9 @@ export default function CartoesPage() {
       </Sheet>
     </>
   );
+}
+
+function CardGlyph({ icon }: { icon?: string | null }) {
+  // ícones vêm de uma tabela fixa; createElement evita o aviso de componente criado na renderização
+  return createElement(iconFor(icon) ?? CardIcon, { className: "size-6 opacity-80", "aria-hidden": true });
 }

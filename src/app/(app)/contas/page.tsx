@@ -3,6 +3,7 @@
 import { Archive, ArchiveRestore, Landmark, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { useData } from "@/components/data-provider";
+import { EntityIcon, IconPicker, iconPatch, suggestIcon } from "@/components/icons";
 import { Button, ColorPicker, EmptyState, ErrorBox, Field, IconButton, MoneyInput, PageHeader, Sheet } from "@/components/ui";
 import { deleteAccount, saveAccount, setAccountArchived } from "@/lib/api";
 import { accountBalance, initialBalanceFor } from "@/lib/finance";
@@ -18,9 +19,7 @@ export default function ContasPage() {
 
   const row = (a: Account) => (
     <button key={a.id} onClick={() => setEditing(a)} className="flex w-full items-center gap-3 p-4 text-left hover:bg-surface-2">
-      <span className="flex size-10 items-center justify-center rounded-xl" style={{ background: `color-mix(in oklab, ${a.color} 16%, transparent)`, color: a.color }}>
-        <Landmark className="size-5" />
-      </span>
+      <EntityIcon icon={a.icon} name={a.name} color={a.color} fallback={Landmark} />
       <span className="min-w-0 flex-1">
         <span className="block truncate font-medium">{a.name}</span>
         <span className="text-xs text-muted">{ACCOUNT_TYPE_LABEL[a.type]}</span>
@@ -73,6 +72,7 @@ function AccountForm({ account, onDone }: { account?: Account; onDone: () => voi
   // o usuário informa o saldo de hoje; o saldo inicial é calculado a partir dele
   const [balance, setBalance] = useState<number | null>(account ? accountBalance(account, transactions) : 0);
   const [color, setColor] = useState(account?.color ?? "#2F6FB0");
+  const [icon, setIcon] = useState<string | null>(account?.icon ?? null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -93,7 +93,7 @@ function AccountForm({ account, onDone }: { account?: Account; onDone: () => voi
     e.preventDefault();
     if (!name.trim()) return setError("Informe o nome da conta.");
     const initial = account ? initialBalanceFor(account, transactions, balance ?? 0) : balance ?? 0;
-    run(() => saveAccount({ name: name.trim(), type, initial_balance: initial, color }, account?.id));
+    run(() => saveAccount({ name: name.trim(), type, initial_balance: initial, color, ...iconPatch(account?.icon, icon) }, account?.id));
   }
 
   function remove() {
@@ -128,6 +128,7 @@ function AccountForm({ account, onDone }: { account?: Account; onDone: () => voi
         {(id) => <MoneyInput id={id} value={balance} onChange={setBalance} allowNegative />}
       </Field>
       <Field label="Cor">{() => <ColorPicker value={color} onChange={setColor} />}</Field>
+      <Field label="Ícone">{() => <IconPicker value={icon} onChange={setIcon} color={color} suggested={suggestIcon(name) ?? "banco"} />}</Field>
       <ErrorBox>{error}</ErrorBox>
       <Button type="submit" loading={busy} className="w-full">
         {account ? "Salvar conta" : "Criar conta"}

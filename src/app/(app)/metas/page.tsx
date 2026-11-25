@@ -3,6 +3,7 @@
 import { ChevronRight, Minus, Pencil, Plus, Target, Trash2, TrendingUp } from "lucide-react";
 import { useState } from "react";
 import { useData } from "@/components/data-provider";
+import { EntityIcon, IconPicker, iconPatch, suggestIcon } from "@/components/icons";
 import { Button, ColorPicker, EmptyState, ErrorBox, Field, IconButton, MoneyInput, PageHeader, ProgressBar, Sheet, StatStrip } from "@/components/ui";
 import { deleteGoal, saveGoal, setGoalSaved } from "@/lib/api";
 import { fullDate, isValidISODate } from "@/lib/dates";
@@ -61,7 +62,7 @@ export default function MetasPage() {
                   <li key={g.id}>
                     <button type="button" onClick={() => setOpenId(g.id)} className="-mx-2 block w-[calc(100%+1rem)] rounded-xl px-2 py-3.5 text-left hover:bg-surface-2">
                       <span className="flex items-center gap-3">
-                        <span className="size-2.5 shrink-0 rounded-full" style={{ background: g.color }} aria-hidden />
+                        <EntityIcon icon={g.icon} name={g.name} color={g.color} fallback={Target} size="sm" />
                         <span className="min-w-0 flex-1 truncate font-medium">{g.name}</span>
                         <span className="num font-semibold">{Math.floor(p * 100)}%</span>
                         <ChevronRight className="size-4 text-muted" aria-hidden />
@@ -152,6 +153,7 @@ function GoalForm({ goal, onDone }: { goal?: Goal; onDone: () => void }) {
   const [saved, setSaved] = useState<number | null>(goal?.saved_amount ?? 0);
   const [deadline, setDeadline] = useState(goal?.deadline ?? "");
   const [color, setColor] = useState(goal?.color ?? "#0B6B45");
+  const [icon, setIcon] = useState<string | null>(goal?.icon ?? null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -162,7 +164,7 @@ function GoalForm({ goal, onDone }: { goal?: Goal; onDone: () => void }) {
     if (deadline && !isValidISODate(deadline)) return setError("Prazo inválido.");
     setBusy(true);
     try {
-      await saveGoal({ name: name.trim(), target_amount: target, saved_amount: Math.max(0, saved ?? 0), deadline: deadline || null, color }, goal?.id);
+      await saveGoal({ name: name.trim(), target_amount: target, saved_amount: Math.max(0, saved ?? 0), deadline: deadline || null, color, ...iconPatch(goal?.icon, icon) }, goal?.id);
       await reload();
       onDone();
     } catch (err) {
@@ -195,6 +197,7 @@ function GoalForm({ goal, onDone }: { goal?: Goal; onDone: () => void }) {
         {(id) => <input id={id} type="date" className="field" value={deadline} onChange={(e) => setDeadline(e.target.value)} />}
       </Field>
       <Field label="Cor">{() => <ColorPicker value={color} onChange={setColor} />}</Field>
+      <Field label="Ícone">{() => <IconPicker value={icon} onChange={setIcon} color={color} suggested={suggestIcon(name) ?? "meta"} />}</Field>
       <ErrorBox>{error}</ErrorBox>
       <Button type="submit" loading={busy} className="w-full">
         {goal ? "Salvar meta" : "Criar meta"}

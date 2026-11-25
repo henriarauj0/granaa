@@ -4,6 +4,7 @@ import { useState } from "react";
 import { saveCard } from "@/lib/api";
 import type { CreditCard } from "@/lib/types";
 import { useData } from "./data-provider";
+import { IconPicker, iconPatch } from "./icons";
 import { Button, ColorPicker, ErrorBox, Field, MoneyInput } from "./ui";
 
 export function CardForm({ card, onDone }: { card?: CreditCard; onDone: () => void }) {
@@ -13,6 +14,7 @@ export function CardForm({ card, onDone }: { card?: CreditCard; onDone: () => vo
   const [closing, setClosing] = useState(card?.closing_day ?? 1);
   const [due, setDue] = useState(card?.due_day ?? 10);
   const [color, setColor] = useState(card?.color ?? "#14201A");
+  const [icon, setIcon] = useState<string | null>(card?.icon ?? null);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -21,7 +23,7 @@ export function CardForm({ card, onDone }: { card?: CreditCard; onDone: () => vo
     if (!name.trim()) return setError("Informe o nome do cartão.");
     setSaving(true);
     try {
-      await saveCard({ name: name.trim(), limit_amount: limit ?? 0, closing_day: closing, due_day: due, color }, card?.id);
+      await saveCard({ name: name.trim(), limit_amount: limit ?? 0, closing_day: closing, due_day: due, color, ...iconPatch(card?.icon, icon) }, card?.id);
       await reload();
       onDone();
     } catch (err) {
@@ -65,6 +67,7 @@ export function CardForm({ card, onDone }: { card?: CreditCard; onDone: () => vo
         </Field>
       </div>
       <Field label="Cor">{() => <ColorPicker value={color} onChange={setColor} />}</Field>
+      <Field label="Ícone">{() => <IconPicker value={icon} onChange={setIcon} color="var(--brand)" suggested="cartao" />}</Field>
       <ErrorBox>{error}</ErrorBox>
       <Button type="submit" loading={saving} className="w-full">
         {card ? "Salvar cartão" : "Adicionar cartão"}

@@ -6,6 +6,7 @@ import { shortDate } from "@/lib/dates";
 import { NO_CATEGORY, transactionSource } from "@/lib/finance";
 import type { Transaction } from "@/lib/types";
 import { useData } from "./data-provider";
+import { EntityIcon } from "./icons";
 import { Money } from "./ui";
 
 /**
@@ -33,9 +34,7 @@ export function TransactionRow({
 
   const sign: "income" | "expense" | "neutral" =
     t.kind === "income" ? "income" : t.kind === "expense" ? "expense" : "neutral";
-  const color = category?.color ?? "var(--muted)";
   const Icon = t.kind === "transfer" ? ArrowLeftRight : t.kind === "card_payment" ? Receipt : card ? CreditCard : null;
-  const initial = (category?.name ?? t.description).charAt(0).toUpperCase();
   const kindName = t.kind === "transfer" ? "Transferência" : t.kind === "card_payment" ? "Pagamento de fatura" : NO_CATEGORY;
 
   const selecting = onToggle !== undefined;
@@ -55,13 +54,12 @@ export function TransactionRow({
           {selected ? <Check className="size-5" strokeWidth={3} /> : null}
         </span>
       ) : (
-        <span
-          className="flex size-10 shrink-0 items-center justify-center rounded-full text-sm font-bold"
-          style={{ background: `color-mix(in oklab, ${color} 18%, transparent)`, color }}
-          aria-hidden
-        >
-          {Icon && !category ? <Icon className="size-5" /> : initial}
-        </span>
+        <EntityIcon
+          icon={category?.icon}
+          name={category?.name ?? t.description}
+          color={category?.color ?? "var(--muted)"}
+          fallback={category ? null : Icon}
+        />
       )}
       <span className="min-w-0 flex-1">
         <span className="block truncate font-medium">
