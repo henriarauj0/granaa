@@ -21,7 +21,7 @@ O Granaa é um aplicativo web que pode ser instalado na tela inicial do celular,
 
 **Lançamentos.** Registre despesas, receitas e transferências entre contas em poucos toques, com categoria, data e observação. A lista mostra os lançamentos agrupados por dia, com busca e filtros por tipo, conta, cartão e categoria, e pode ser vista por mês ou por um dia específico (botão de calendário). Tocar num lançamento abre a edição, onde também dá para excluí-lo. Em **Selecionar**, você marca vários lançamentos (ou todos os da tela) para excluir de uma vez ou trocar a categoria.
 
-**Contas.** Cadastre conta corrente, poupança, carteira e investimentos. O saldo de cada conta é calculado a partir do saldo inicial e dos lançamentos. Se ele não bater com o banco, por exemplo depois de importar um extrato, edite a conta e informe o **saldo de hoje**: o app recalcula o ponto de partida sem mexer nos lançamentos.
+**Contas.** Cadastre conta corrente, poupança, carteira e investimentos. O saldo de cada conta é calculado a partir do saldo inicial e dos lançamentos. Se ele não bater com o banco, por exemplo depois de importar um extrato, edite a conta e informe o **saldo de hoje**. O app guarda esse valor como saldo conferido naquela data: lançamentos com data anterior ao acerto ficam no histórico e nos relatórios, mas não mudam o saldo; os posteriores somam ou subtraem normalmente.
 
 **Cartões de crédito.** Informe os dias de fechamento e de vencimento, e o Granaa coloca cada compra na fatura certa. Compras parceladas, em até 24 vezes, são distribuídas automaticamente pelas faturas seguintes. A fatura mostra a situação (aberta, fechada, vencida ou paga), permite registrar o pagamento e acompanha o limite disponível.
 
@@ -60,7 +60,7 @@ O arquivo é lido no próprio aparelho. Só os lançamentos que você confirmar 
 - **Compras no cartão** contam como despesa na data da compra. Em compras parceladas, cada parcela conta no seu próprio mês.
 - **Pagamento de fatura** apenas tira o dinheiro da conta e abate a fatura. Não conta como despesa de novo.
 - **Transferências entre contas** não são receita nem despesa.
-- **Saldo da conta** considera o saldo inicial e os lançamentos com data até hoje.
+- **Saldo da conta** considera o saldo inicial e os lançamentos com data até hoje. Depois de um acerto com o banco, parte do saldo conferido e soma só os lançamentos posteriores ao acerto.
 - **Fatura:** uma compra feita a partir do dia de fechamento entra na fatura seguinte.
 
 ## Privacidade e segurança

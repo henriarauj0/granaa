@@ -255,22 +255,43 @@ Data Lançamento;Descrição;Valor;Saldo
 });
 
 describe("ajuste de saldo e datas", () => {
-  it("saldo inicial que faz o saldo de hoje bater com o banco", async () => {
-    const { initialBalanceFor, accountBalance } = await import("../finance");
-    const account = { id: "a1", name: "Conta", type: "corrente", initial_balance: 0, color: "", archived: false, created_at: "" } as Account;
-    const list = [
-      tx({ account_id: "a1", kind: "income", amount: 3000, date: "2026-11-05" }),
-      tx({ account_id: "a1", kind: "expense", amount: 1200, date: "2026-11-10" }),
-      tx({ account_id: "a1", kind: "expense", amount: 50, date: "2099-01-01" }),
-    ];
-    expect(accountBalance(account, list, "2026-11-25")).toBe(1800);
-    const initial = initialBalanceFor(account, list, 0, "2026-11-25");
-    expect(initial).toBe(-1800);
-    expect(accountBalance({ ...account, initial_balance: initial }, list, "2026-11-25")).toBe(0);
-  });
   it("soma dias atravessando mês e ano", async () => {
     const { addDays } = await import("../dates");
     expect(addDays("2026-11-30", 1)).toBe("2026-12-01");
     expect(addDays("2027-01-01", -1)).toBe("2026-12-31");
+  });
+});
+
+describe("saldo conferido com o banco", () => {
+  const conta = {
+    id: "a1",
+    name: "Conta",
+    type: "corrente",
+    initial_balance: 0, // o banco mostrava R$ 0,00 no acerto
+    color: "",
+    archived: false,
+    created_at: "",
+    balance_date: "2026-11-20",
+    balance_checked_at: "2026-11-20T15:00:00+00:00",
+  } as Account;
+
+  it("lançamento retroativo, anterior ao acerto, não muda o saldo de hoje", () => {
+    const list = [tx({ account_id: "a1", kind: "income", amount: 1000, date: "2026-11-13", created_at: "2026-11-25T12:00:00+00:00" })];
+    expect(accountBalance(conta, list, "2026-11-25")).toBe(0);
+  });
+
+  it("lançamentos depois do acerto contam; no mesmo dia, só os registrados depois dele", () => {
+    const list = [
+      tx({ account_id: "a1", kind: "expense", amount: 50, date: "2026-11-20", created_at: "2026-11-20T10:00:00+00:00" }),
+      tx({ account_id: "a1", kind: "expense", amount: 30, date: "2026-11-20", created_at: "2026-11-20T18:00:00+00:00" }),
+      tx({ account_id: "a1", kind: "income", amount: 200, date: "2026-11-22", created_at: "2026-11-22T09:00:00+00:00" }),
+      tx({ account_id: "a1", kind: "expense", amount: 99, date: "2099-01-01", created_at: "2026-11-22T09:00:00+00:00" }),
+    ];
+    expect(accountBalance(conta, list, "2026-11-25")).toBe(170);
+  });
+
+  it("sem acerto, o saldo continua sendo saldo inicial mais todos os lançamentos", () => {
+    const list = [tx({ account_id: "a1", kind: "income", amount: 1000, date: "2026-11-13" })];
+    expect(accountBalance({ ...conta, balance_date: null, balance_checked_at: null }, list, "2026-11-25")).toBe(1000);
   });
 });

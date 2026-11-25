@@ -6,7 +6,8 @@ import { useData } from "@/components/data-provider";
 import { EntityIcon, IconPicker, iconPatch, suggestIcon } from "@/components/icons";
 import { Button, ColorPicker, EmptyState, ErrorBox, Field, IconButton, MoneyInput, PageHeader, Sheet } from "@/components/ui";
 import { deleteAccount, saveAccount, setAccountArchived } from "@/lib/api";
-import { accountBalance, initialBalanceFor } from "@/lib/finance";
+import { fullDate, today } from "@/lib/dates";
+import { accountBalance } from "@/lib/finance";
 import { formatMoney } from "@/lib/money";
 import { ACCOUNT_TYPE_LABEL, type Account, type AccountType } from "@/lib/types";
 
@@ -22,7 +23,10 @@ export default function ContasPage() {
       <EntityIcon icon={a.icon} name={a.name} color={a.color} fallback={Landmark} />
       <span className="min-w-0 flex-1">
         <span className="block truncate font-medium">{a.name}</span>
-        <span className="text-xs text-muted">{ACCOUNT_TYPE_LABEL[a.type]}</span>
+        <span className="text-xs text-muted">
+          {ACCOUNT_TYPE_LABEL[a.type]}
+          {a.balance_date ? ` · conferido em ${fullDate(a.balance_date)}` : ""}
+        </span>
       </span>
       <span className="num font-semibold">{formatMoney(accountBalance(a, transactions))}</span>
     </button>
@@ -69,8 +73,9 @@ function AccountForm({ account, onDone }: { account?: Account; onDone: () => voi
   const { reload, transactions } = useData();
   const [name, setName] = useState(account?.name ?? "");
   const [type, setType] = useState<AccountType>(account?.type ?? "corrente");
-  // o usuário informa o saldo de hoje; o saldo inicial é calculado a partir dele
-  const [balance, setBalance] = useState<number | null>(account ? accountBalance(account, transactions) : 0);
+  // o usuário informa o saldo de hoje, que fica guardado como saldo conferido nesta data
+  const current = account ? accountBalance(account, transactions) : 0;
+  const [balance, setBalance] = useState<number | null>(current);
   const [color, setColor] = useState(account?.color ?? "#2F6FB0");
   const [icon, setIcon] = useState<string | null>(account?.icon ?? null);
   const [error, setError] = useState<string | null>(null);
@@ -92,8 +97,13 @@ function AccountForm({ account, onDone }: { account?: Account; onDone: () => voi
   function submit(e: React.FormEvent) {
     e.preventDefault();
     if (!name.trim()) return setError("Informe o nome da conta.");
-    const initial = account ? initialBalanceFor(account, transactions, balance ?? 0) : balance ?? 0;
-    run(() => saveAccount({ name: name.trim(), type, initial_balance: initial, color, ...iconPatch(account?.icon, icon) }, account?.id));
+    // o acerto só é gravado quando o saldo muda (ou numa conta nova), para não
+    // mover a data do acerto ao editar só o nome ou a cor
+    const checkpoint =
+      !account || (balance ?? 0) !== current
+        ? { initial_balance: balance ?? 0, balance_date: today(), balance_checked_at: new Date().toISOString() }
+        : {};
+    run(() => saveAccount({ name: name.trim(), type, color, ...checkpoint, ...iconPatch(account?.icon, icon) }, account?.id));
   }
 
   function remove() {
@@ -123,7 +133,13 @@ function AccountForm({ account, onDone }: { account?: Account; onDone: () => voi
       </Field>
       <Field
         label="Saldo de hoje"
-        hint="Use o valor que aparece hoje no app do banco. Os lançamentos registrados continuam iguais; o app ajusta o ponto de partida da conta para o saldo bater. Pode ser negativo."
+        hint={
+          <>
+            Use o valor que aparece hoje no app do banco. Lançamentos com data anterior ao acerto ficam no histórico e não
+            mudam o saldo; os de depois somam ou subtraem. Pode ser negativo.
+            {account?.balance_date ? ` Último acerto: ${fullDate(account.balance_date)}.` : ""}
+          </>
+        }
       >
         {(id) => <MoneyInput id={id} value={balance} onChange={setBalance} allowNegative />}
       </Field>

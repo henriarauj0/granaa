@@ -4,7 +4,7 @@ import { Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { createTransaction, deleteInstallmentGroup, deleteTransaction, updateTransaction } from "@/lib/api";
-import { addMonths, isValidISODate, monthLabel, today } from "@/lib/dates";
+import { addMonths, fullDate, isValidISODate, monthLabel, today } from "@/lib/dates";
 import { invoiceMonthFor } from "@/lib/finance";
 import { formatMoney, splitInstallments } from "@/lib/money";
 import type { Transaction, TransactionKind } from "@/lib/types";
@@ -42,6 +42,10 @@ export function TransactionForm({ original }: { original?: Transaction }) {
   const kindCategories = categories.filter((c) => c.kind === (kind === "income" ? "income" : "expense"));
   const selectedCard = source.startsWith("c:") ? cardById.get(source.slice(2)) ?? null : null;
   const accountId = source.startsWith("a:") ? source.slice(2) : null;
+  // lançamento anterior ao acerto de saldo da conta fica só no histórico
+  const checkedAccount = [accountId, kind === "transfer" ? toAccount : null]
+    .map((id) => accounts.find((a) => a.id === id))
+    .find((a) => a?.balance_date && date < a.balance_date);
 
   const invoicePreview = useMemo(() => {
     if (!selectedCard || !isValidISODate(date)) return null;
@@ -172,6 +176,12 @@ export function TransactionForm({ original }: { original?: Transaction }) {
           </Field>
         ) : null}
       </div>
+      {checkedAccount ? (
+        <p className="rounded-xl bg-surface-2 px-3 py-2 text-sm text-ink-2">
+          A data é anterior ao acerto de saldo de {checkedAccount.name} ({fullDate(checkedAccount.balance_date!)}). O
+          lançamento entra no histórico e nos relatórios, mas não muda o saldo de hoje, que já foi conferido com o banco.
+        </p>
+      ) : null}
 
       {!isCardPayment ? (
         <Field label={kind === "transfer" ? "De (conta de origem)" : kind === "income" ? "Entrou em" : "Pago com"}>

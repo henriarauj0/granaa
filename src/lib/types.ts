@@ -11,7 +11,12 @@ export interface Account {
   id: string;
   name: string;
   type: AccountType;
+  /** Sem acerto: saldo antes do primeiro lançamento. Com acerto: saldo conferido em balance_date. */
   initial_balance: number;
+  /** Dia em que o saldo foi conferido com o banco (vazio = sem acerto). */
+  balance_date?: string | null;
+  /** Momento do acerto; no mesmo dia, só contam lançamentos registrados depois dele. */
+  balance_checked_at?: string | null;
   color: string;
   /** chave do ícone na galeria; vazio = automático pelo nome */
   icon?: string | null;

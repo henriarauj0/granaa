@@ -24,6 +24,8 @@ function translateDbError(message: string): string {
   if (message.includes("Categoria inválida")) return "Categoria inválida.";
   if (message.includes("categories_user_id_kind_name_key")) return "Já existe uma categoria com esse nome.";
   if (message.includes("Failed to fetch")) return "Sem conexão. Verifique sua internet.";
+  if (/balance_date|balance_checked_at/.test(message))
+    return "Para guardar o saldo conferido, rode no Supabase a migração supabase/migrations/20261126000000_saldo_conferido.sql.";
   if (/'icon' column|column .*icon/i.test(message))
     return "Para guardar ícones, rode no Supabase a migração supabase/migrations/20261125000000_icones.sql.";
   return message;
@@ -152,7 +154,9 @@ export async function insertImported(rows: NewTransaction[]): Promise<number> {
 /** O ícone só vai junto quando muda, para os formulários funcionarem antes da migração dos ícones. */
 type WithIcon = { icon?: string | null };
 
-type AccountInput = Pick<Account, "name" | "type" | "initial_balance" | "color"> & WithIcon;
+type AccountInput = Pick<Account, "name" | "type" | "color"> &
+  Partial<Pick<Account, "initial_balance" | "balance_date" | "balance_checked_at">> &
+  WithIcon;
 export async function saveAccount(input: AccountInput, id?: string) {
   const supabase = getSupabase();
   if (id) check(await supabase.from("accounts").update(input).eq("id", id));

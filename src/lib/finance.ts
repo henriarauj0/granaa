@@ -122,18 +122,22 @@ export function accountDelta(t: Transaction, accountId: string): number {
 }
 
 /**
- * Saldo inicial que faz o saldo de hoje bater com o valor real da conta.
- * Útil depois de importar um extrato que não começa do zero.
+ * Se o lançamento entra no saldo da conta. Depois de um acerto com o banco,
+ * o que tem data anterior ao acerto já estava no saldo conferido; no próprio
+ * dia do acerto, só conta o que foi registrado depois dele.
  */
-export function initialBalanceFor(account: Account, transactions: Transaction[], target: number, until = today()): number {
-  let movement = 0;
-  for (const t of transactions) if (t.date <= until) movement += accountDelta(t, account.id);
-  return cents(target - movement);
+export function countsInBalance(t: Transaction, account: Account, until = today()): boolean {
+  if (t.date > until) return false;
+  const day = account.balance_date;
+  if (!day || t.date > day) return true;
+  if (t.date < day) return false;
+  const checked = account.balance_checked_at ? Date.parse(account.balance_checked_at) : NaN;
+  return Number.isFinite(checked) && Date.parse(t.created_at) > checked;
 }
 
 export function accountBalance(account: Account, transactions: Transaction[], until = today()): number {
   let balance = account.initial_balance;
-  for (const t of transactions) if (t.date <= until) balance += accountDelta(t, account.id);
+  for (const t of transactions) if (countsInBalance(t, account, until)) balance += accountDelta(t, account.id);
   return cents(balance);
 }
 
