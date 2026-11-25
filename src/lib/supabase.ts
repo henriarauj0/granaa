@@ -17,7 +17,9 @@ export function getSupabase(): SupabaseClient {
   }
   if (!client) {
     client = createClient(url!, key!, {
-      auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true },
+      // PKCE: o navegador só aceita o retorno de um login ou link que ele mesmo pediu.
+      // No fluxo implícito, qualquer link com tokens de outra conta trocava a sessão.
+      auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true, flowType: "pkce" },
     });
   }
   return client;

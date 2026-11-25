@@ -22,7 +22,7 @@ describe("banco: atalho do Apple Pay", () => {
       create role anon nologin;
       create role authenticated nologin;
       create schema auth;
-      create table auth.users (id uuid primary key, email text, raw_user_meta_data jsonb default '{}');
+      create table auth.users (id uuid primary key, email text, encrypted_password text, raw_user_meta_data jsonb default '{}');
       create function auth.uid() returns uuid language sql stable as
         $$ select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $$;
       grant usage on schema auth to anon, authenticated;
@@ -105,9 +105,17 @@ describe("banco: atalho do Apple Pay", () => {
 
     const t0 = await compra({ valor: "R$ 42,90", estab: "Padaria Pão Quente", cartao: "Carteira digital", teste: true });
     assert.equal(t0.teste, true);
+    assert.equal(Number(t0.valor), 42.9);
+    // a resposta não revela nomes de cartões nem de contas, em nenhum modo
+    for (const cartao of ["", "a", "n", "nubank", "inter"]) {
+      const r = JSON.stringify(await compra({ valor: "1", cartao, teste: true }));
+      assert.doesNotMatch(r, /Nubank|Inter|Carteira/, `teste com cartão "${cartao}" não mostra nomes`);
+      assert.deepEqual(Object.keys(JSON.parse(r)).sort(), ["descricao", "ok", "teste", "valor"]);
+    }
     assert.equal((await one(`select count(*)::int n from public.transactions where description = 'Padaria Pão Quente'`)).n, 0, "teste não grava");
 
     const r1 = await compra({ valor: "R$ 1.234,56", estab: "Magazine", cartao: "Nubank Ultravioleta" });
+    assert.deepEqual(Object.keys(r1).sort(), ["descricao", "id", "ok", "valor"], "registro também não mostra o destino");
     const t1 = await one(`select * from public.transactions where id = $1`, [r1.id]);
     assert.equal(Number(t1.amount), 1234.56);
     assert.equal(t1.card_id, nubank.id, "cartão da Carteira casa com o cartão do Granaa");
@@ -135,13 +143,31 @@ describe("banco: atalho do Apple Pay", () => {
     assert.equal(t5.account_id, carteira.id);
 
     // valores em formatos diversos
-    for (const [txt, esperado] of [["R$ 42,90", 42.9], ["1.234", 1234], ["1234.5", 1234.5], ["-R$ 10,00", 10], ["", null], ["R$", null]]) {
+    for (const [txt, esperado] of [
+      ["R$ 42,90", 42.9],
+      ["R$\u00a042,90", 42.9],
+      ["1.234", 1234],
+      ["1234.5", 1234.5],
+      ["1.234,56", 1234.56],
+      ["1,234.56", 1234.56],
+      ["US$ 1,234,567.89", 1234567.89],
+      ["1,234,567", 1234567],
+      ["10,00 BRL", 10],
+      ["-R$ 10,00", null],
+      ["1e9", null],
+      ["", null],
+      ["R$", null],
+    ] as const) {
       const v = (await one(`select public.valor_do_texto($1) v`, [txt])).v;
       assert.equal(v === null ? null : Number(v), esperado, `valor ${txt}`);
     }
 
     // a chave da Maria nunca grava para o João
     assert.equal((await one(`select count(*)::int n from public.transactions where user_id = $1`, [U2])).n, 0);
+    // conta padrão arquivada não recebe compras
+    await db.query(`update public.accounts set archived = true where id = $1`, [carteira.id]);
+    await assert.rejects(compra({ valor: "5", cartao: "Desconhecido" }), /Escolha a conta padrão/);
+    await db.query(`update public.accounts set archived = false where id = $1`, [carteira.id]);
     // conta padrão apagada: o atalho avisa
     await db.query(`delete from public.transactions where account_id = $1`, [carteira.id]);
     await db.query(`delete from public.accounts where id = $1`, [carteira.id]);
@@ -154,8 +180,42 @@ describe("banco: atalho do Apple Pay", () => {
     const uso = await one(`select last_used_at from public.shortcut_keys where user_id = $1`, [U1]);
     assert.ok(uso.last_used_at, "registra o último uso");
 
-    // apagar a chave desliga o atalho
-    await as(U1, `delete from public.shortcut_keys`);
+    // trocar a senha desliga o atalho
+    await db.query(`update auth.users set email = 'maria@novo.com' where id = $1`, [U1]);
+    assert.ok((await compra({ chave: nova, valor: "6", estab: "Livraria" })).ok, "mudar outro dado não desliga");
+    await db.query(`update auth.users set encrypted_password = 'hash-novo' where id = $1`, [U1]);
     await assert.rejects(compra({ chave: nova, valor: "5" }), /Chave do atalho inválida/);
+
+    // apagar a chave desliga o atalho
+    const outra = (await as(U1, `select public.gerar_chave_atalho($1) as k`, [inter.id])).rows[0].k;
+    assert.ok((await compra({ chave: outra, valor: "5", estab: "Banca" })).ok);
+    await as(U1, `delete from public.shortcut_keys`);
+    await assert.rejects(compra({ chave: outra, valor: "5" }), /Chave do atalho inválida/);
+
+    // reforços das tabelas
+    await assert.rejects(
+      as(U1, `update public.accounts set color = 'red;background:url(x)' where id = $1`, [inter.id]),
+      /accounts_color_hex/,
+      "cor fora do formato #RRGGBB",
+    );
+    await as(U1, `update public.accounts set color = '#123ABC' where id = $1`, [inter.id]);
+    await as(U1, `update public.profiles set full_name = 'Maria S.' where id = $1`, [U1]);
+    await assert.rejects(
+      as(U1, `update public.profiles set created_at = now() where id = $1`, [U1]),
+      /permission denied/,
+      "perfil: só o nome é editável",
+    );
+    const catJoao = await one(`select id from public.categories where user_id = $1 limit 1`, [U2]);
+    await db.exec(`alter table public.transactions disable trigger user`);
+    await assert.rejects(
+      db.query(`insert into public.transactions (user_id, kind, description, amount, date, category_id, account_id) values ($1, 'expense', 'x', 1, '2026-10-01', $2, $3)`, [
+        U1,
+        catJoao.id,
+        inter.id,
+      ]),
+      /transactions_category_owner_fkey/,
+      "categoria de outro usuário barrada mesmo sem o gatilho",
+    );
+    await db.exec(`alter table public.transactions enable trigger user`);
   }, 60_000);
 });

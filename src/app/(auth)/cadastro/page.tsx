@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { AuthShell } from "@/components/auth-shell";
 import { Button, ErrorBox, Field } from "@/components/ui";
+import { PASSWORD_HINT, passwordProblem } from "@/lib/password";
 import { authErrorMessage, getSupabase } from "@/lib/supabase";
 
 export default function CadastroPage() {
@@ -22,8 +23,8 @@ export default function CadastroPage() {
     e.preventDefault();
     setError(null);
     if (name.trim().length < 2) return setError("Informe seu nome.");
-    if (password.length < 8) return setError("A senha precisa ter pelo menos 8 caracteres.");
-    if (!/[A-Za-z]/.test(password) || !/\d/.test(password)) return setError("Use letras e números na senha.");
+    const problem = passwordProblem(password);
+    if (problem) return setError(problem);
     if (password !== confirm) return setError("As senhas não conferem.");
     setLoading(true);
     const { data, error } = await getSupabase().auth.signUp({
@@ -73,7 +74,7 @@ export default function CadastroPage() {
             <input id={id} className="field" type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
           )}
         </Field>
-        <Field label="Senha" hint="Mínimo de 8 caracteres, com letras e números.">
+        <Field label="Senha" hint={PASSWORD_HINT}>
           {(id) => (
             <input id={id} className="field" type="password" autoComplete="new-password" required value={password} onChange={(e) => setPassword(e.target.value)} />
           )}

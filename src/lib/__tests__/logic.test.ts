@@ -295,3 +295,13 @@ describe("saldo conferido com o banco", () => {
     expect(accountBalance({ ...conta, balance_date: null, balance_checked_at: null }, list, "2026-11-25")).toBe(1000);
   });
 });
+
+describe("regra de senha", () => {
+  it("exige 8 caracteres com letras e números", async () => {
+    const { passwordProblem } = await import("@/lib/password");
+    expect(passwordProblem("curta1")).toMatch(/8 caracteres/);
+    expect(passwordProblem("somenteletras")).toMatch(/letras e números/);
+    expect(passwordProblem("12345678")).toMatch(/letras e números/);
+    expect(passwordProblem("senhaboa1")).toBeNull();
+  });
+});

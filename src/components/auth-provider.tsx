@@ -25,13 +25,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!supabaseConfigured) return;
     const supabase = getSupabase();
     supabase.auth.getSession().then(({ data }) => {
-      setState((s) => ({ ...s, session: data.session, loading: false }));
+      // O aviso de PASSWORD_RECOVERY sai numa tarefa à parte logo depois de a sessão
+      // ser lida; esperar uma volta evita mostrar por um instante a tela errada.
+      setTimeout(() => setState((s) => ({ ...s, session: data.session, loading: false })), 0);
     });
     const { data } = supabase.auth.onAuthStateChange((event, session) => {
       setState((s) => ({
+        ...s,
         session,
-        loading: false,
-        recovering: event === "PASSWORD_RECOVERY" ? true : event === "SIGNED_OUT" ? false : s.recovering,
+        // só um link de redefinição pedido por este navegador libera a troca de senha
+        recovering:
+          event === "PASSWORD_RECOVERY" ? true : event === "SIGNED_OUT" || event === "USER_UPDATED" ? false : s.recovering,
       }));
     });
     return () => data.subscription.unsubscribe();

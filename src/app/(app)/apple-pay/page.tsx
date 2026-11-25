@@ -74,7 +74,9 @@ export default function ApplePayPage() {
       });
       const body = await res.json();
       if (!res.ok) throw new Error(body?.message ?? `Erro ${res.status}`);
-      setTest(`Funcionou. Uma compra de ${formatMoney(body.valor)} iria para ${body.onde}. Nada foi gravado.`);
+      // o servidor não diz o destino (para não expor nomes a quem tiver a chave); o app já sabe qual é a conta padrão
+      const destino = accounts.find((a) => a.id === (status?.defaultAccountId ?? chosen))?.name ?? "a conta padrão";
+      setTest(`Funcionou. Uma compra de ${formatMoney(Number(body.valor))} iria para ${destino}. Nada foi gravado.`);
     } catch (e) {
       setError(e instanceof Error ? e.message : "O teste falhou.");
     } finally {
@@ -153,7 +155,7 @@ export default function ApplePayPage() {
               <CopyValue value={key} />
               <p className="text-xs text-muted">
                 Cole no atalho do iPhone, no campo <strong>chave</strong>. Ela só registra despesas na sua conta. Se perder,
-                gere outra; a anterior deixa de funcionar.
+                gere outra; a anterior deixa de funcionar. Trocar a senha do Granaa também desliga a chave.
               </p>
               <Button variant="secondary" className="w-full" loading={busy} onClick={testConnection}>
                 Testar conexão
