@@ -253,3 +253,24 @@ Data Lançamento;Descrição;Valor;Saldo
     expect(importKey("a1", { ...row, externalId: "X" }, 0)).toBe("a1:fit:X");
   });
 });
+
+describe("ajuste de saldo e datas", () => {
+  it("saldo inicial que faz o saldo de hoje bater com o banco", async () => {
+    const { initialBalanceFor, accountBalance } = await import("../finance");
+    const account = { id: "a1", name: "Conta", type: "corrente", initial_balance: 0, color: "", archived: false, created_at: "" } as Account;
+    const list = [
+      tx({ account_id: "a1", kind: "income", amount: 3000, date: "2026-11-05" }),
+      tx({ account_id: "a1", kind: "expense", amount: 1200, date: "2026-11-10" }),
+      tx({ account_id: "a1", kind: "expense", amount: 50, date: "2099-01-01" }),
+    ];
+    expect(accountBalance(account, list, "2026-11-25")).toBe(1800);
+    const initial = initialBalanceFor(account, list, 0, "2026-11-25");
+    expect(initial).toBe(-1800);
+    expect(accountBalance({ ...account, initial_balance: initial }, list, "2026-11-25")).toBe(0);
+  });
+  it("soma dias atravessando mês e ano", async () => {
+    const { addDays } = await import("../dates");
+    expect(addDays("2026-11-30", 1)).toBe("2026-12-01");
+    expect(addDays("2027-01-01", -1)).toBe("2026-12-31");
+  });
+});

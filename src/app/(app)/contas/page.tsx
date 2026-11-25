@@ -5,7 +5,7 @@ import { useState } from "react";
 import { useData } from "@/components/data-provider";
 import { Button, ColorPicker, EmptyState, ErrorBox, Field, IconButton, MoneyInput, PageHeader, Sheet } from "@/components/ui";
 import { deleteAccount, saveAccount, setAccountArchived } from "@/lib/api";
-import { accountBalance } from "@/lib/finance";
+import { accountBalance, initialBalanceFor } from "@/lib/finance";
 import { formatMoney } from "@/lib/money";
 import { ACCOUNT_TYPE_LABEL, type Account, type AccountType } from "@/lib/types";
 
@@ -54,7 +54,10 @@ export default function ContasPage() {
           <div className="card divide-y divide-line overflow-hidden opacity-70">{archived.map(row)}</div>
         </section>
       ) : null}
-      <p className="mt-4 px-1 text-xs text-muted">O saldo considera o saldo inicial e os lançamentos com data até hoje.</p>
+      <p className="mt-4 px-1 text-xs text-muted">
+        O saldo considera o saldo inicial e os lançamentos com data até hoje. Se ele não bate com o app do banco (por exemplo,
+        depois de importar um extrato), toque na conta e corrija o saldo de hoje.
+      </p>
 
       <Sheet open={editing !== null} onClose={() => setEditing(null)} title={editing === "new" ? "Nova conta" : "Editar conta"}>
         {editing !== null ? <AccountForm account={editing === "new" ? undefined : editing} onDone={() => setEditing(null)} /> : null}
@@ -67,7 +70,8 @@ function AccountForm({ account, onDone }: { account?: Account; onDone: () => voi
   const { reload, transactions } = useData();
   const [name, setName] = useState(account?.name ?? "");
   const [type, setType] = useState<AccountType>(account?.type ?? "corrente");
-  const [initial, setInitial] = useState<number | null>(account?.initial_balance ?? 0);
+  // o usuário informa o saldo de hoje; o saldo inicial é calculado a partir dele
+  const [balance, setBalance] = useState<number | null>(account ? accountBalance(account, transactions) : 0);
   const [color, setColor] = useState(account?.color ?? "#2F6FB0");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -88,7 +92,8 @@ function AccountForm({ account, onDone }: { account?: Account; onDone: () => voi
   function submit(e: React.FormEvent) {
     e.preventDefault();
     if (!name.trim()) return setError("Informe o nome da conta.");
-    run(() => saveAccount({ name: name.trim(), type, initial_balance: initial ?? 0, color }, account?.id));
+    const initial = account ? initialBalanceFor(account, transactions, balance ?? 0) : balance ?? 0;
+    run(() => saveAccount({ name: name.trim(), type, initial_balance: initial, color }, account?.id));
   }
 
   function remove() {
@@ -116,8 +121,11 @@ function AccountForm({ account, onDone }: { account?: Account; onDone: () => voi
           </select>
         )}
       </Field>
-      <Field label="Saldo inicial" hint="Quanto havia na conta antes do primeiro lançamento registrado. Pode ser negativo.">
-        {(id) => <MoneyInput id={id} value={initial} onChange={setInitial} allowNegative />}
+      <Field
+        label="Saldo de hoje"
+        hint="Use o valor que aparece hoje no app do banco. Os lançamentos registrados continuam iguais; o app ajusta o ponto de partida da conta para o saldo bater. Pode ser negativo."
+      >
+        {(id) => <MoneyInput id={id} value={balance} onChange={setBalance} allowNegative />}
       </Field>
       <Field label="Cor">{() => <ColorPicker value={color} onChange={setColor} />}</Field>
       <ErrorBox>{error}</ErrorBox>

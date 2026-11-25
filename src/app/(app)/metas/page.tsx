@@ -1,9 +1,9 @@
 "use client";
 
-import { Minus, Pencil, PartyPopper, Plus, Target, Trash2 } from "lucide-react";
+import { ChevronRight, Minus, Pencil, Plus, Target, Trash2, TrendingUp } from "lucide-react";
 import { useState } from "react";
 import { useData } from "@/components/data-provider";
-import { Button, ColorPicker, EmptyState, ErrorBox, Field, IconButton, MoneyInput, PageHeader, ProgressBar, Sheet } from "@/components/ui";
+import { Button, ColorPicker, EmptyState, ErrorBox, Field, IconButton, MoneyInput, PageHeader, ProgressBar, Sheet, StatStrip } from "@/components/ui";
 import { deleteGoal, saveGoal, setGoalSaved } from "@/lib/api";
 import { fullDate, isValidISODate } from "@/lib/dates";
 import { goalProgress, monthlyNeeded } from "@/lib/finance";
@@ -14,21 +14,16 @@ export default function MetasPage() {
   const { goals } = useData();
   const [editing, setEditing] = useState<Goal | "new" | null>(null);
   const [moving, setMoving] = useState<{ goal: Goal; mode: "add" | "remove" } | null>(null);
+  const [openId, setOpenId] = useState<string | null>(null);
+  const open = goals.find((g) => g.id === openId) ?? null;
 
   const totalSaved = goals.reduce((s, g) => s + g.saved_amount, 0);
   const totalTarget = goals.reduce((s, g) => s + g.target_amount, 0);
+  const overall = goalProgress(totalSaved, totalTarget);
 
   return (
     <>
-      <PageHeader
-        title="Metas"
-        subtitle={goals.length ? `${formatMoney(totalSaved)} acumulados de ${formatMoney(totalTarget)}` : undefined}
-        action={
-          <IconButton label="Nova meta" onClick={() => setEditing("new")} className="bg-surface-2">
-            <Plus className="size-5" />
-          </IconButton>
-        }
-      />
+      <PageHeader title="Metas" />
 
       {goals.length === 0 ? (
         <div className="card">
@@ -40,57 +35,68 @@ export default function MetasPage() {
           />
         </div>
       ) : (
-        <div className="space-y-4">
-          {goals.map((g) => {
-            const p = goalProgress(g.saved_amount, g.target_amount);
-            const done = p >= 1;
-            const perMonth = monthlyNeeded(g.saved_amount, g.target_amount, g.deadline);
-            return (
-              <article key={g.id} className="card p-5">
-                <div className="flex items-start gap-3">
-                  <span className="flex size-11 shrink-0 items-center justify-center rounded-2xl" style={{ background: `color-mix(in oklab, ${g.color} 16%, transparent)`, color: g.color }}>
-                    {done ? <PartyPopper className="size-5" /> : <Target className="size-5" />}
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <h2 className="truncate font-bold">{g.name}</h2>
-                    <p className="text-sm text-muted">
-                      {g.deadline ? `Até ${fullDate(g.deadline)}` : "Sem prazo"}
-                    </p>
-                  </div>
-                  <IconButton label={`Editar meta ${g.name}`} onClick={() => setEditing(g)} className="-mr-2 -mt-2">
-                    <Pencil className="size-4" />
-                  </IconButton>
-                </div>
+        <div className="space-y-5">
+          <StatStrip
+            label="Resumo das metas"
+            items={[
+              { label: "Acumulado", value: formatMoney(totalSaved) },
+              { label: "Meta total", value: formatMoney(totalTarget) },
+              { label: "Progresso", icon: <TrendingUp className="size-3.5 text-income" />, value: `${Math.floor(overall * 100)}%` },
+            ]}
+          />
 
-                <div className="mt-4 flex items-end justify-between">
-                  <p className="num text-2xl font-bold">{formatMoney(g.saved_amount)}</p>
-                  <p className="num text-sm text-muted">de {formatMoney(g.target_amount)}</p>
-                </div>
-                <div className="mt-2">
-                  <ProgressBar value={p} color={g.color} label={`Progresso da meta ${g.name}`} />
-                </div>
-                <p className="mt-2 text-sm text-ink-2">
-                  {done
-                    ? "Meta atingida! 🎉"
-                    : `${Math.floor(p * 100)}% · faltam ${formatMoney(g.target_amount - g.saved_amount)}${
-                        perMonth ? ` · acumule ${formatMoney(perMonth)}/mês para chegar no prazo` : ""
-                      }`}
-                </p>
-
-                <div className="mt-4 grid grid-cols-2 gap-2">
-                  <Button variant="secondary" onClick={() => setMoving({ goal: g, mode: "remove" })} disabled={g.saved_amount <= 0}>
-                    <Minus className="size-4" /> Diminuir
-                  </Button>
-                  <Button onClick={() => setMoving({ goal: g, mode: "add" })}>
-                    <Plus className="size-4" /> Adicionar
-                  </Button>
-                </div>
-              </article>
-            );
-          })}
+          <section className="card p-4" aria-labelledby="metas-h">
+            <div className="mb-2 flex items-center justify-between">
+              <h2 id="metas-h" className="flex items-center gap-2 text-lg font-medium">
+                <Target className="size-5 text-ink-2" /> Suas metas <span className="text-sm text-muted">({goals.length})</span>
+              </h2>
+              <IconButton label="Nova meta" onClick={() => setEditing("new")} className="size-10 bg-brand text-on-brand hover:bg-brand-strong">
+                <Plus className="size-5" />
+              </IconButton>
+            </div>
+            <ul className="divide-y divide-line">
+              {goals.map((g) => {
+                const p = goalProgress(g.saved_amount, g.target_amount);
+                return (
+                  <li key={g.id}>
+                    <button type="button" onClick={() => setOpenId(g.id)} className="-mx-2 block w-[calc(100%+1rem)] rounded-xl px-2 py-3.5 text-left hover:bg-surface-2">
+                      <span className="flex items-center gap-3">
+                        <span className="size-2.5 shrink-0 rounded-full" style={{ background: g.color }} aria-hidden />
+                        <span className="min-w-0 flex-1 truncate font-medium">{g.name}</span>
+                        <span className="num font-semibold">{Math.floor(p * 100)}%</span>
+                        <ChevronRight className="size-4 text-muted" aria-hidden />
+                      </span>
+                      <span className="mt-2.5 block">
+                        <ProgressBar value={p} color={g.color} label={`Progresso da meta ${g.name}`} thin />
+                      </span>
+                      <span className="num mt-1.5 flex justify-between text-xs text-muted">
+                        <span>{formatMoney(g.saved_amount)}</span>
+                        <span>{formatMoney(g.target_amount)}</span>
+                      </span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          </section>
         </div>
       )}
 
+      <Sheet open={open !== null} onClose={() => setOpenId(null)} title={open?.name ?? "Meta"}>
+        {open ? (
+          <GoalDetail
+            goal={open}
+            onMove={(mode) => {
+              setOpenId(null);
+              setMoving({ goal: open, mode });
+            }}
+            onEdit={() => {
+              setOpenId(null);
+              setEditing(open);
+            }}
+          />
+        ) : null}
+      </Sheet>
       <Sheet open={editing !== null} onClose={() => setEditing(null)} title={editing === "new" ? "Nova meta" : "Editar meta"}>
         {editing !== null ? <GoalForm goal={editing === "new" ? undefined : editing} onDone={() => setEditing(null)} /> : null}
       </Sheet>
@@ -98,6 +104,44 @@ export default function MetasPage() {
         {moving ? <MoveForm goal={moving.goal} mode={moving.mode} onDone={() => setMoving(null)} /> : null}
       </Sheet>
     </>
+  );
+}
+
+function GoalDetail({ goal: g, onMove, onEdit }: { goal: Goal; onMove: (mode: "add" | "remove") => void; onEdit: () => void }) {
+  const p = goalProgress(g.saved_amount, g.target_amount);
+  const done = p >= 1;
+  const perMonth = monthlyNeeded(g.saved_amount, g.target_amount, g.deadline);
+  return (
+    <div className="space-y-4">
+      <div>
+        <div className="flex items-end justify-between">
+          <p className="num text-3xl font-semibold tracking-tight">{formatMoney(g.saved_amount)}</p>
+          <p className="num text-sm text-muted">de {formatMoney(g.target_amount)}</p>
+        </div>
+        <div className="mt-3">
+          <ProgressBar value={p} color={g.color} label={`Progresso da meta ${g.name}`} />
+        </div>
+        <p className="mt-2 text-sm text-ink-2">
+          {done
+            ? "Meta atingida."
+            : `${Math.floor(p * 100)}% · faltam ${formatMoney(g.target_amount - g.saved_amount)}${
+                perMonth ? ` · acumule ${formatMoney(perMonth)}/mês para chegar no prazo` : ""
+              }`}
+        </p>
+        <p className="mt-1 text-sm text-muted">{g.deadline ? `Prazo: ${fullDate(g.deadline)}` : "Sem prazo"}</p>
+      </div>
+      <div className="grid grid-cols-2 gap-2">
+        <Button variant="secondary" onClick={() => onMove("remove")} disabled={g.saved_amount <= 0}>
+          <Minus className="size-4" /> Diminuir
+        </Button>
+        <Button onClick={() => onMove("add")}>
+          <Plus className="size-4" /> Adicionar
+        </Button>
+      </div>
+      <Button variant="ghost" className="w-full" onClick={onEdit}>
+        <Pencil className="size-4" /> Editar meta
+      </Button>
+    </div>
   );
 }
 

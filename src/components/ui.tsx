@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronLeft, ChevronRight, X } from "lucide-react";
+import { ArrowDownRight, ArrowUpRight, ChevronLeft, ChevronRight, X } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useId, useState, type ButtonHTMLAttributes, type ReactNode } from "react";
 import { addMonths, monthLabel } from "@/lib/dates";
@@ -169,7 +169,7 @@ export function PageHeader({
         </Link>
       ) : null}
       <div className="min-w-0 flex-1">
-        <h1 className="truncate text-2xl font-bold tracking-tight">{title}</h1>
+        <h1 className="truncate text-[28px] font-medium tracking-tight">{title}</h1>
         {subtitle ? <p className="text-sm text-muted">{subtitle}</p> : null}
       </div>
       {action}
@@ -177,16 +177,151 @@ export function PageHeader({
   );
 }
 
-export function MonthSwitcher({ month, onChange }: { month: string; onChange: (m: string) => void }) {
+/** Barra com setas para voltar e avançar um período (mês ou dia). */
+export function PeriodSwitcher({
+  label,
+  unit,
+  onPrev,
+  onNext,
+}: {
+  label: string;
+  /** "mês" ou "dia", para os rótulos das setas */
+  unit: string;
+  onPrev: () => void;
+  onNext: () => void;
+}) {
   return (
-    <div className="flex items-center justify-between rounded-full bg-surface-2 p-1">
-      <IconButton label="Mês anterior" onClick={() => onChange(addMonths(month, -1))} className="size-9">
+    <div className="flex items-center justify-between rounded-full border border-line bg-surface p-1">
+      <IconButton label={`${unit === "dia" ? "Dia" : "Mês"} anterior`} onClick={onPrev} className="size-9">
         <ChevronLeft className="size-5" />
       </IconButton>
-      <span className="text-sm font-semibold">{monthLabel(month)}</span>
-      <IconButton label="Próximo mês" onClick={() => onChange(addMonths(month, 1))} className="size-9">
+      <span className="truncate px-2 text-sm font-semibold">{label}</span>
+      <IconButton label={`Próximo ${unit}`} onClick={onNext} className="size-9">
         <ChevronRight className="size-5" />
       </IconButton>
+    </div>
+  );
+}
+
+export function MonthSwitcher({ month, onChange }: { month: string; onChange: (m: string) => void }) {
+  return (
+    <PeriodSwitcher
+      label={monthLabel(month)}
+      unit="mês"
+      onPrev={() => onChange(addMonths(month, -1))}
+      onNext={() => onChange(addMonths(month, 1))}
+    />
+  );
+}
+
+export interface Stat {
+  label: string;
+  value: ReactNode;
+  icon?: ReactNode;
+  /** cor do valor: verde quando positivo, vermelho quando negativo */
+  tone?: "income" | "expense";
+}
+
+/** Faixa de três números no topo das telas (ex.: Receitas | Balanço | Despesas). */
+export function StatStrip({ items, label }: { items: Stat[]; label: string }) {
+  return (
+    <section className="card grid grid-cols-3 divide-x divide-line py-3.5 text-center" aria-label={label}>
+      {items.map((s) => (
+        <div key={s.label} className="min-w-0 px-1.5">
+          <p className="flex items-center justify-center gap-1 text-xs text-muted">
+            {s.icon}
+            {s.label}
+          </p>
+          <p
+            className={`num mt-0.5 truncate text-[15px] font-semibold ${
+              s.tone === "income" ? "text-income" : s.tone === "expense" ? "text-expense" : ""
+            }`}
+          >
+            {s.value}
+          </p>
+        </div>
+      ))}
+    </section>
+  );
+}
+
+/** Faixa Receitas | Balanço | Despesas, usada no painel e em Lançamentos. */
+export function SummaryStrip({ income, expense, balance }: { income: number; expense: number; balance: number }) {
+  return (
+    <StatStrip
+      label="Resumo do período"
+      items={[
+        { label: "Receitas", icon: <ArrowUpRight className="size-3.5 text-income" />, value: formatMoney(income) },
+        {
+          label: "Balanço",
+          value: formatMoney(balance),
+          tone: balance > 0.004 ? "income" : balance < -0.004 ? "expense" : undefined,
+        },
+        { label: "Despesas", icon: <ArrowDownRight className="size-3.5 text-expense" />, value: formatMoney(expense) },
+      ]}
+    />
+  );
+}
+
+/** Classe dos botões redondos com borda do cabeçalho e da fileira de ações. */
+export const ROUND = "inline-flex items-center justify-center rounded-full border border-line bg-surface text-ink-2 hover:bg-surface-2";
+
+/** Ação redonda com rótulo embaixo, como "Filtros" e "Exportar". */
+export function RoundAction({
+  label,
+  icon,
+  onClick,
+  active,
+  primary,
+}: {
+  label: string;
+  icon: ReactNode;
+  onClick: () => void;
+  active?: boolean;
+  primary?: boolean;
+}) {
+  return (
+    <button type="button" onClick={onClick} aria-pressed={active} className="flex min-w-0 flex-1 flex-col items-center gap-1.5">
+      <span
+        className={`size-14 ${
+          primary
+            ? "inline-flex items-center justify-center rounded-full bg-brand text-on-brand hover:bg-brand-strong"
+            : `${ROUND} ${active ? "border-brand text-brand" : ""}`
+        }`}
+      >
+        {icon}
+      </span>
+      <span className="max-w-full truncate text-xs text-ink-2">{label}</span>
+    </button>
+  );
+}
+
+/** Filtro em pílulas: uma opção ativa por vez. */
+export function Pills<T extends string>({
+  value,
+  onChange,
+  options,
+  label,
+}: {
+  value: T;
+  onChange: (v: T) => void;
+  options: Array<{ value: T; label: string }>;
+  label: string;
+}) {
+  return (
+    <div role="radiogroup" aria-label={label} className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1">
+      {options.map((o) => (
+        <button
+          key={o.value}
+          type="button"
+          role="radio"
+          aria-checked={value === o.value}
+          onClick={() => onChange(o.value)}
+          className="min-h-10 shrink-0 rounded-full border border-line px-4 text-sm font-semibold text-ink-2 aria-checked:border-brand aria-checked:bg-brand aria-checked:text-on-brand"
+        >
+          {o.label}
+        </button>
+      ))}
     </div>
   );
 }
@@ -208,10 +343,10 @@ export function Money({ value, kind, className = "" }: { value: number; kind?: "
   return <span className={`num whitespace-nowrap ${color} ${className}`}>{sign}{formatMoney(kind && kind !== "neutral" ? Math.abs(value) : value)}</span>;
 }
 
-export function ProgressBar({ value, color = "var(--brand)", label }: { value: number; color?: string; label: string }) {
+export function ProgressBar({ value, color = "var(--brand)", label, thin }: { value: number; color?: string; label: string; thin?: boolean }) {
   const pct = Math.round(Math.min(1, Math.max(0, value)) * 100);
   return (
-    <div role="progressbar" aria-label={label} aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100} className="h-2 w-full overflow-hidden rounded-full bg-surface-2">
+    <div role="progressbar" aria-label={label} aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100} className={`${thin ? "h-1.5" : "h-2"} w-full overflow-hidden rounded-full bg-surface-2`}>
       <div className="h-full rounded-full transition-[width]" style={{ width: `${pct}%`, background: color }} />
     </div>
   );

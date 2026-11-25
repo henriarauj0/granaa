@@ -1,12 +1,12 @@
 "use client";
 
-import { ArrowDownRight, ArrowUpRight, ChevronRight, CreditCard, Settings, Target, Upload, Wallet } from "lucide-react";
+import { ChevronRight, CreditCard, Menu, Target, Upload, Wallet } from "lucide-react";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { CategoryBreakdown } from "@/components/category-breakdown";
 import { useData } from "@/components/data-provider";
 import { TransactionRow } from "@/components/transaction-row";
-import { Badge, EmptyState, Money, MonthSwitcher, ProgressBar } from "@/components/ui";
+import { Badge, EmptyState, MonthSwitcher, ProgressBar, ROUND, SummaryStrip } from "@/components/ui";
 import { currentMonth, fullDate, monthKey } from "@/lib/dates";
 import {
   accountBalance,
@@ -33,15 +33,15 @@ export default function InicioPage() {
       <header className="flex items-center justify-between">
         <div>
           <p className="text-sm text-muted">Olá{firstName ? `, ${firstName}` : ""}</p>
-          <h1 className="text-2xl font-bold tracking-tight">Seu dinheiro</h1>
+          <h1 className="text-[28px] font-medium tracking-tight">Seu dinheiro</h1>
         </div>
-        <Link href="/mais" aria-label="Mais opções" className="inline-flex size-11 items-center justify-center rounded-full text-ink-2 hover:bg-surface-2">
-          <Settings className="size-6" />
+        <Link href="/mais" aria-label="Mais opções" title="Mais opções" className={`size-12 ${ROUND}`}>
+          <Menu className="size-5" />
         </Link>
       </header>
 
       {/* Saldo */}
-      <section className="rounded-3xl bg-brand p-5 text-on-brand shadow-lg" aria-label="Saldo">
+      <section className="rounded-3xl bg-hero p-5 text-on-hero shadow-lg" aria-label="Saldo">
         <p className="text-sm opacity-80">Saldo em contas hoje</p>
         <p className="num mt-1 text-4xl font-bold tracking-tight">{formatMoney(totalBalance)}</p>
         <div className="mt-4 flex flex-wrap gap-2">
@@ -59,24 +59,7 @@ export default function InicioPage() {
       <MonthSwitcher month={month} onChange={setMonth} />
 
       {/* Resumo do mês */}
-      <section className="grid grid-cols-2 gap-3" aria-label="Resumo do mês">
-        <div className="card p-4">
-          <p className="flex items-center gap-1 text-sm text-muted">
-            <ArrowUpRight className="size-4 text-income" /> Receitas
-          </p>
-          <p className="num mt-1 text-xl font-bold">{formatMoney(summary.income)}</p>
-        </div>
-        <div className="card p-4">
-          <p className="flex items-center gap-1 text-sm text-muted">
-            <ArrowDownRight className="size-4 text-expense" /> Despesas
-          </p>
-          <p className="num mt-1 text-xl font-bold">{formatMoney(summary.expense)}</p>
-        </div>
-        <div className="card col-span-2 flex items-center justify-between p-4">
-          <p className="text-sm text-muted">Resultado do mês</p>
-          <Money value={summary.balance} kind={summary.balance >= 0 ? "income" : "expense"} className="text-lg font-bold" />
-        </div>
-      </section>
+      <SummaryStrip {...summary} />
 
       {/* Cartões */}
       <section aria-labelledby="cartoes-h">

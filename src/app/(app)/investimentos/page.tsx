@@ -5,7 +5,7 @@ import { useMemo, useState } from "react";
 import { useData } from "@/components/data-provider";
 import { Donut } from "@/components/donut";
 import { FlowChart } from "@/components/flow-chart";
-import { Button, EmptyState, ErrorBox, Field, IconButton, Money, MoneyInput, PageHeader, Segmented, Sheet } from "@/components/ui";
+import { Button, EmptyState, ErrorBox, Field, IconButton, Money, MoneyInput, PageHeader, Segmented, Sheet, StatStrip } from "@/components/ui";
 import { deleteInvestment, deleteMovement, saveInvestment, saveMovement } from "@/lib/api";
 import { isValidISODate, monthKey, monthLabel, shortDate, today } from "@/lib/dates";
 import { assetStats, averageMonthlyContribution, byClass, monthlyFlows, positions as listPositions, type AssetStats } from "@/lib/investments";
@@ -103,20 +103,14 @@ export default function InvestimentosPage() {
         </div>
       ) : (
         <div className="space-y-5">
-          <section className="card grid grid-cols-3 divide-x divide-line py-3 text-center" aria-label="Resumo da carteira">
-            <div className="px-2">
-              <p className="text-xs text-muted">Patrimônio</p>
-              <p className="num truncate text-sm font-semibold">{wholeMoney(total)}</p>
-            </div>
-            <div className="px-2">
-              <p className="text-xs text-muted">Maior posição</p>
-              <p className="truncate text-sm font-semibold">{positions[0]?.investment.name ?? "—"}</p>
-            </div>
-            <div className="px-2">
-              <p className="text-xs text-muted">Aporte médio</p>
-              <p className="num truncate text-sm font-semibold">{wholeMoney(average)}</p>
-            </div>
-          </section>
+          <StatStrip
+            label="Resumo da carteira"
+            items={[
+              { label: "Patrimônio", value: wholeMoney(total) },
+              { label: "Maior posição", value: positions[0]?.investment.name ?? "—" },
+              { label: "Aporte médio", value: wholeMoney(average) },
+            ]}
+          />
 
           <section className="card p-4" aria-labelledby="dist-h">
             <div className="mb-1 flex items-start justify-between gap-3">

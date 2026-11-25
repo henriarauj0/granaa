@@ -121,6 +121,16 @@ export function accountDelta(t: Transaction, accountId: string): number {
   return t.kind === "income" ? t.amount : -t.amount;
 }
 
+/**
+ * Saldo inicial que faz o saldo de hoje bater com o valor real da conta.
+ * Útil depois de importar um extrato que não começa do zero.
+ */
+export function initialBalanceFor(account: Account, transactions: Transaction[], target: number, until = today()): number {
+  let movement = 0;
+  for (const t of transactions) if (t.date <= until) movement += accountDelta(t, account.id);
+  return cents(target - movement);
+}
+
 export function accountBalance(account: Account, transactions: Transaction[], until = today()): number {
   let balance = account.initial_balance;
   for (const t of transactions) if (t.date <= until) balance += accountDelta(t, account.id);

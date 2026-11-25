@@ -85,6 +85,19 @@ export function dayHeading(iso: string): string {
   return `${weekday.charAt(0).toUpperCase() + weekday.slice(1)}, ${day} de ${MONTHS[month - 1]}`;
 }
 
+/** Soma dias a uma data "YYYY-MM-DD". */
+export function addDays(iso: string, n: number): string {
+  const { year, month, day } = parts(iso);
+  const d = new Date(Date.UTC(year, month - 1, day + n));
+  return toISODate(d.getUTCFullYear(), d.getUTCMonth() + 1, d.getUTCDate());
+}
+
+/** "Quarta, 25 de novembro de 2026" (ou "Hoje"/"Ontem" com a data). */
+export function dayLabel(iso: string): string {
+  const heading = dayHeading(iso);
+  return heading.includes(" de ") ? `${heading} de ${parts(iso).year}` : `${heading}, ${fullDate(iso)}`;
+}
+
 /** Mês abreviado com inicial maiúscula: "Nov". */
 export function shortMonth(iso: string): string {
   const name = MONTHS_SHORT[parts(iso).month - 1];

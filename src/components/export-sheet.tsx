@@ -2,7 +2,7 @@
 
 import { Download } from "lucide-react";
 import { useState } from "react";
-import { dateRangeLabel, monthLabel, today } from "@/lib/dates";
+import { dateRangeLabel, today } from "@/lib/dates";
 import { exportTransactions } from "@/lib/export/transactions";
 import { XLSX_MIME } from "@/lib/export/xlsx";
 import { lancamentosLabel } from "@/lib/finance";
@@ -29,20 +29,20 @@ export function ExportSheet({
   onClose,
   visible,
   filters,
-  month,
+  period,
 }: {
   onClose: () => void;
   /** Lançamentos que estão na tela (mês e filtros). */
   visible: Transaction[];
   filters: string;
-  /** YYYY-MM-01 */
-  month: string;
+  /** Período na tela: rótulo ("Novembro de 2026") e chave para o nome do arquivo ("2026-11"). */
+  period: { label: string; key: string };
 }) {
   const { transactions, accounts, cards, categories } = useData();
   const [scope, setScope] = useState<Scope>("visible");
   const [error, setError] = useState<string | null>(null);
 
-  const visibleLabel = monthLabel(month);
+  const visibleLabel = period.label;
   const list = scope === "visible" ? visible : transactions;
   // os lançamentos chegam do banco do mais recente para o mais antigo
   const newest = transactions[0]?.date;
@@ -50,7 +50,7 @@ export function ExportSheet({
 
   const description =
     scope === "visible"
-      ? `${lancamentosLabel(visible.length)} de ${visibleLabel.toLowerCase()}${filters ? `, filtrados por: ${filters}` : ""}.`
+      ? `${lancamentosLabel(visible.length)} de ${visibleLabel.charAt(0).toLowerCase()}${visibleLabel.slice(1)}${filters ? `, filtrados por: ${filters}` : ""}.`
       : oldest && newest
         ? `${lancamentosLabel(transactions.length)}, de ${dateRangeLabel(oldest, newest)}.`
         : "Nenhum lançamento registrado.";
@@ -66,7 +66,7 @@ export function ExportSheet({
           : { period: "Todo o histórico" },
       );
       const name =
-        scope === "visible" ? `granaa-${month.slice(0, 7)}${filters ? "-filtrado" : ""}.xlsx` : `granaa-completo-${today()}.xlsx`;
+        scope === "visible" ? `granaa-${period.key}${filters ? "-filtrado" : ""}.xlsx` : `granaa-completo-${today()}.xlsx`;
       download(bytes, name);
       onClose();
     } catch (e) {

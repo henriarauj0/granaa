@@ -105,6 +105,23 @@ export async function deleteTransaction(id: string) {
   check(await getSupabase().from("transactions").delete().eq("id", id));
 }
 
+/** Em lotes, para a lista de ids não estourar o tamanho da URL. */
+async function inBatches(ids: string[], run: (batch: string[]) => Promise<void>) {
+  for (let i = 0; i < ids.length; i += 100) await run(ids.slice(i, i + 100));
+}
+
+export async function deleteTransactions(ids: string[]) {
+  await inBatches(ids, async (batch) => {
+    check(await getSupabase().from("transactions").delete().in("id", batch));
+  });
+}
+
+export async function setTransactionsCategory(ids: string[], categoryId: string | null) {
+  await inBatches(ids, async (batch) => {
+    check(await getSupabase().from("transactions").update({ category_id: categoryId }).in("id", batch));
+  });
+}
+
 export async function deleteInstallmentGroup(group: string) {
   check(await getSupabase().from("transactions").delete().eq("installment_group", group));
 }
