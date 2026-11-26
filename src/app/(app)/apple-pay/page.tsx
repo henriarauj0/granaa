@@ -243,6 +243,10 @@ export default function ApplePayPage() {
               </ul>
             </li>
             <li>
+              Adicione a ação <strong>Mostrar Notificação</strong> e, no texto, escolha <strong>Conteúdo do URL</strong>. Assim
+              cada compra mostra no iPhone se deu certo (<code>&quot;ok&quot;:true</code>) ou o motivo do erro.
+            </li>
+            <li>
               Toque em <strong>OK</strong>. Na próxima compra por aproximação, ela aparece em Lançamentos.
             </li>
           </ol>
@@ -251,6 +255,12 @@ export default function ApplePayPage() {
             ou conta no Granaa um nome que apareça no nome do cartão da Carteira (por exemplo, &quot;Nubank&quot;). Compras
             parceladas entram como à vista; ajuste no app se precisar. Se a automação falhar, confira se a Carteira pode usar
             dados móveis em Ajustes.
+          </p>
+          <p className="mt-2 text-xs text-muted">
+            Se depois de uma compra não aparecer notificação nenhuma, o iPhone não disparou a automação; isso acontece com
+            alguns bancos e não depende do Granaa. Se aparecer uma mensagem de erro, ela diz o que corrigir: &quot;Chave do
+            atalho inválida&quot; pede uma chave nova (trocar a senha também desliga a chave), &quot;Invalid API key&quot;
+            indica erro no cabeçalho apikey e &quot;Valor da compra inválido&quot; indica que o campo valor não recebeu a Quantia.
           </p>
         </section>
       </div>
