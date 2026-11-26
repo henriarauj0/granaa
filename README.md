@@ -81,6 +81,7 @@ Abra o endereço no navegador do celular. No iPhone, use **Compartilhar → Adic
 | "Falta configurar o banco de dados" | As variáveis não estavam cadastradas no momento da compilação. Cadastre-as e faça um novo deploy. |
 | O endereço definitivo não muda depois de um deploy | O deploy foi feito como *Preview*. Em **Settings → Environments → Production**, confira se a branch de produção é a branch principal do repositório. |
 | O link de recuperação de senha abre o endereço errado | Ajuste **Site URL** e **Redirect URLs** no Supabase. |
+| "Continuar com o Google" abre uma página de erro do Supabase | O Google não está ligado em **Authentication → Providers → Google**, ou falta `https://<seu-domínio>/entrar` em **Redirect URLs**. No Google Cloud, a URI de redirecionamento autorizada precisa ser `https://<projeto>.supabase.co/auth/v1/callback`. |
 
 ## Desenvolvimento
 
@@ -128,7 +129,7 @@ npm run typecheck && npm run lint && npm run build
 | `src/lib/export/` | Geração da planilha .xlsx exportada |
 | `src/lib/investments.ts` | Valor dos investimentos, distribuição, aporte médio e fluxo mensal |
 | `src/lib/api.ts` | Gravação no banco de dados |
-| `src/app/(auth)/` | Entrar, cadastro e recuperação de senha |
+| `src/app/(auth)/` | Entrar (e-mail e senha ou Google), cadastro e recuperação de senha |
 | `src/app/(app)/` | Telas do app (início, lançamentos, cartões, metas, contas, categorias, importação) |
 
 ## Limitações conhecidas

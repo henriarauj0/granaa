@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { AuthShell } from "@/components/auth-shell";
 import { CAPTCHA_MISSING, useCaptcha } from "@/components/captcha";
+import { GoogleButton, OrDivider } from "@/components/google-button";
 import { Button, ErrorBox, Field } from "@/components/ui";
 import { PASSWORD_HINT, passwordProblem } from "@/lib/password";
 import { authErrorMessage, getSupabase } from "@/lib/supabase";
@@ -70,6 +71,10 @@ export default function CadastroPage() {
 
   return (
     <AuthShell title="Criar conta" subtitle="Leva menos de um minuto.">
+      <div className="mb-6 space-y-6">
+        <GoogleButton />
+        <OrDivider />
+      </div>
       <form onSubmit={submit} className="space-y-4" noValidate>
         <Field label="Nome">
           {(id) => <input id={id} className="field" autoComplete="name" required value={name} onChange={(e) => setName(e.target.value)} />}

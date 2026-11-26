@@ -6,6 +6,7 @@ import { useState } from "react";
 import { AuthShell } from "@/components/auth-shell";
 import { CAPTCHA_MISSING, useCaptcha } from "@/components/captcha";
 import { FinancePhrase } from "@/components/finance-phrase";
+import { GoogleButton, OrDivider } from "@/components/google-button";
 import { Button, ErrorBox, Field } from "@/components/ui";
 import { authErrorMessage, getSupabase } from "@/lib/supabase";
 
@@ -35,6 +36,10 @@ export default function EntrarPage() {
 
   return (
     <AuthShell title={<FinancePhrase />} subtitle="Entre na sua conta.">
+      <div className="mb-6 space-y-6">
+        <GoogleButton />
+        <OrDivider />
+      </div>
       <form onSubmit={submit} className="space-y-4">
         <Field label="E-mail">
           {(id) => (
