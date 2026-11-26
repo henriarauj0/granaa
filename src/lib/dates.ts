@@ -119,3 +119,20 @@ export function monthsBetween(a: string, b: string): number {
   const pb = parts(b);
   return (pb.year - pa.year) * 12 + (pb.month - pa.month);
 }
+
+/** Segunda-feira da semana de `iso` (semana de segunda a domingo). */
+export function weekStart(iso: string): string {
+  const { year, month, day } = parts(iso);
+  const weekday = new Date(Date.UTC(year, month - 1, day)).getUTCDay(); // 0 = domingo
+  return addDays(iso, -((weekday + 6) % 7));
+}
+
+/** "23 a 29 de novembro de 2026", "30 nov a 6 dez de 2026" ou, na virada do ano, "28/12/2026 a 03/01/2027". */
+export function weekLabel(start: string): string {
+  const end = addDays(start, 6);
+  const a = parts(start);
+  const b = parts(end);
+  if (a.year !== b.year) return `${fullDate(start)} a ${fullDate(end)}`;
+  if (a.month !== b.month) return `${a.day} ${MONTHS_SHORT[a.month - 1]} a ${b.day} ${MONTHS_SHORT[b.month - 1]} de ${b.year}`;
+  return `${a.day} a ${b.day} de ${MONTHS[b.month - 1]} de ${b.year}`;
+}

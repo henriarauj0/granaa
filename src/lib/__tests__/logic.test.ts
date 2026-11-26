@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { addMonths, monthKey } from "../dates";
+import { addMonths, monthKey, weekLabel, weekStart } from "../dates";
 import {
   accountBalance,
   cardUsedLimit,
@@ -303,5 +303,19 @@ describe("regra de senha", () => {
     expect(passwordProblem("somenteletras")).toMatch(/letras e números/);
     expect(passwordProblem("12345678")).toMatch(/letras e números/);
     expect(passwordProblem("senhaboa1")).toBeNull();
+  });
+});
+
+describe("semana", () => {
+  it("começa na segunda e cobre até domingo", () => {
+    expect(weekStart("2026-11-26")).toBe("2026-11-23"); // quinta
+    expect(weekStart("2026-11-23")).toBe("2026-11-23"); // segunda
+    expect(weekStart("2026-11-29")).toBe("2026-11-23"); // domingo
+    expect(weekStart("2027-01-01")).toBe("2026-12-28");
+  });
+  it("descreve o intervalo", () => {
+    expect(weekLabel("2026-11-23")).toBe("23 a 29 de novembro de 2026");
+    expect(weekLabel("2026-11-30")).toBe("30 nov a 6 dez de 2026");
+    expect(weekLabel("2026-12-28")).toBe("28/12/2026 a 03/01/2027");
   });
 });

@@ -177,7 +177,7 @@ export function PageHeader({
   );
 }
 
-/** Barra com setas para voltar e avançar um período (mês ou dia). */
+/** Barra com setas para voltar e avançar um período (mês, semana ou dia). */
 export function PeriodSwitcher({
   label,
   unit,
@@ -185,18 +185,18 @@ export function PeriodSwitcher({
   onNext,
 }: {
   label: string;
-  /** "mês" ou "dia", para os rótulos das setas */
+  /** "mês", "semana" ou "dia", para os rótulos das setas */
   unit: string;
   onPrev: () => void;
   onNext: () => void;
 }) {
   return (
     <div className="flex items-center justify-between rounded-full border border-line bg-surface p-1">
-      <IconButton label={`${unit === "dia" ? "Dia" : "Mês"} anterior`} onClick={onPrev} className="size-9">
+      <IconButton label={unit === "semana" ? "Semana anterior" : unit === "dia" ? "Dia anterior" : "Mês anterior"} onClick={onPrev} className="size-9">
         <ChevronLeft className="size-5" />
       </IconButton>
       <span className="truncate px-2 text-sm font-semibold">{label}</span>
-      <IconButton label={`Próximo ${unit}`} onClick={onNext} className="size-9">
+      <IconButton label={unit === "semana" ? "Próxima semana" : `Próximo ${unit}`} onClick={onNext} className="size-9">
         <ChevronRight className="size-5" />
       </IconButton>
     </div>

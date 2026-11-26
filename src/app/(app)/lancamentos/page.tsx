@@ -9,13 +9,13 @@ import { ExportSheet } from "@/components/export-sheet";
 import { TransactionRow } from "@/components/transaction-row";
 import { Button, EmptyState, ErrorBox, Field, Money, PageHeader, PeriodSwitcher, Pills, ROUND, RoundAction, Segmented, Sheet, SummaryStrip } from "@/components/ui";
 import { deleteTransactions, setTransactionsCategory } from "@/lib/api";
-import { addDays, addMonths, currentMonth, dayHeading, dayLabel, isValidISODate, monthKey, monthLabel, today } from "@/lib/dates";
+import { addDays, addMonths, currentMonth, dayHeading, dayLabel, isValidISODate, monthKey, monthLabel, today, weekLabel, weekStart } from "@/lib/dates";
 import { NO_CATEGORY, categoryKey, categoryTotals, lancamentosLabel, periodSummary } from "@/lib/finance";
 import { normalizeDescription } from "@/lib/import/categorize";
 import type { Transaction } from "@/lib/types";
 
 type KindFilter = "all" | "expense" | "income" | "other";
-type Mode = "month" | "day";
+type Mode = "month" | "week" | "day";
 
 const KIND_LABEL: Record<KindFilter, string> = {
   all: "Todos",
@@ -35,14 +35,16 @@ export default function LancamentosPage() {
 
 /**
  * Aceita filtros iniciais pela URL, usados pelo painel inicial:
- * /lancamentos?mes=2026-11&categoria=<id ou none>&tipo=expense, ou ?dia=2026-11-25
+ * /lancamentos?mes=2026-11&categoria=<id ou none>&tipo=expense, ?semana=2026-11-23 ou ?dia=2026-11-25
  */
 function Lancamentos() {
   const params = useSearchParams();
   const router = useRouter();
   const { transactions, accounts, cards, categories, accountById, cardById, categoryById, reload } = useData();
 
-  const [mode, setMode] = useState<Mode>(() => (isValidISODate(params.get("dia") ?? "") ? "day" : "month"));
+  const [mode, setMode] = useState<Mode>(() =>
+    isValidISODate(params.get("dia") ?? "") ? "day" : isValidISODate(params.get("semana") ?? "") ? "week" : "month",
+  );
   const [month, setMonth] = useState(() => {
     const mes = params.get("mes");
     return mes && isValidISODate(`${mes}-01`) ? `${mes}-01` : currentMonth();
@@ -51,6 +53,12 @@ function Lancamentos() {
     const dia = params.get("dia") ?? "";
     return isValidISODate(dia) ? dia : today();
   });
+  // segunda-feira da semana escolhida
+  const [week, setWeek] = useState(() => {
+    const semana = params.get("semana") ?? "";
+    return weekStart(isValidISODate(semana) ? semana : today());
+  });
+  const weekEnd = addDays(week, 6);
   const [query, setQuery] = useState("");
   const [kind, setKind] = useState<KindFilter>(() => {
     const tipo = params.get("tipo");
@@ -74,7 +82,9 @@ function Lancamentos() {
   const base = useMemo(() => {
     const q = normalizeDescription(query);
     return transactions.filter((t) => {
-      if (mode === "day" ? t.date !== day : monthKey(t.date) !== month) return false;
+      if (mode === "day" && t.date !== day) return false;
+      if (mode === "week" && (t.date < week || t.date > weekEnd)) return false;
+      if (mode === "month" && monthKey(t.date) !== month) return false;
       if (kind === "expense" && t.kind !== "expense") return false;
       if (kind === "income" && t.kind !== "income") return false;
       if (kind === "other" && (t.kind === "income" || t.kind === "expense")) return false;
@@ -83,7 +93,7 @@ function Lancamentos() {
       if (q && !normalizeDescription(t.description).includes(q)) return false;
       return true;
     });
-  }, [transactions, mode, day, month, query, kind, source]);
+  }, [transactions, mode, day, week, weekEnd, month, query, kind, source]);
 
   const filtered = useMemo(() => (category ? base.filter((t) => categoryKey(t) === category) : base), [base, category]);
   const byCategory = useMemo(() => categoryTotals(base, categories), [base, categories]);
@@ -103,7 +113,11 @@ function Lancamentos() {
   const chosen = useMemo(() => filtered.filter((t) => selected.has(t.id)), [filtered, selected]);
 
   const period =
-    mode === "day" ? { label: dayLabel(day), key: day } : { label: monthLabel(month), key: month.slice(0, 7) };
+    mode === "day"
+      ? { label: dayLabel(day), key: day }
+      : mode === "week"
+        ? { label: weekLabel(week), key: `semana-${week}` }
+        : { label: monthLabel(month), key: month.slice(0, 7) };
   const hasFilters = !!(query.trim() || source || category);
 
   const filterText = [
@@ -115,6 +129,12 @@ function Lancamentos() {
   ]
     .filter(Boolean)
     .join(" · ");
+
+  function step(n: number) {
+    if (mode === "day") setDay(addDays(day, n));
+    else if (mode === "week") setWeek(addDays(week, 7 * n));
+    else setMonth(addMonths(month, n));
+  }
 
   function toggle(id: string) {
     setSelected((prev) => {
@@ -164,9 +184,9 @@ function Lancamentos() {
       <div className="space-y-4">
         <PeriodSwitcher
           label={period.label}
-          unit={mode === "day" ? "dia" : "mês"}
-          onPrev={() => (mode === "day" ? setDay(addDays(day, -1)) : setMonth(addMonths(month, -1)))}
-          onNext={() => (mode === "day" ? setDay(addDays(day, 1)) : setMonth(addMonths(month, 1)))}
+          unit={mode === "day" ? "dia" : mode === "week" ? "semana" : "mês"}
+          onPrev={() => step(-1)}
+          onNext={() => step(1)}
         />
 
         <SummaryStrip {...summary} />
@@ -364,10 +384,12 @@ function Lancamentos() {
         <PeriodForm
           mode={mode}
           month={month}
+          week={week}
           day={day}
           onApply={(m, value) => {
             setMode(m);
             if (m === "day") setDay(value);
+            else if (m === "week") setWeek(weekStart(value));
             else setMonth(value);
             setPeriodOpen(false);
           }}
@@ -389,11 +411,28 @@ function Lancamentos() {
   );
 }
 
-function PeriodForm({ mode, month, day, onApply }: { mode: Mode; month: string; day: string; onApply: (m: Mode, value: string) => void }) {
+function PeriodForm({
+  mode,
+  month,
+  week,
+  day,
+  onApply,
+}: {
+  mode: Mode;
+  month: string;
+  week: string;
+  day: string;
+  onApply: (m: Mode, value: string) => void;
+}) {
   const [m, setM] = useState<Mode>(mode);
   const [monthValue, setMonthValue] = useState(month.slice(0, 7));
+  // na semana, escolhe-se qualquer dia dela
+  const [weekValue, setWeekValue] = useState(week);
   const [dayValue, setDayValue] = useState(day);
-  const valid = m === "day" ? isValidISODate(dayValue) : isValidISODate(`${monthValue}-01`);
+  const valid =
+    m === "day" ? isValidISODate(dayValue) : m === "week" ? isValidISODate(weekValue) : isValidISODate(`${monthValue}-01`);
+  const value = m === "day" ? dayValue : m === "week" ? weekValue : `${monthValue}-01`;
+  const now = m === "day" ? today() : m === "week" ? weekStart(today()) : currentMonth();
 
   return (
     <div className="space-y-4">
@@ -403,19 +442,27 @@ function PeriodForm({ mode, month, day, onApply }: { mode: Mode; month: string; 
         onChange={setM}
         options={[
           { value: "month", label: "Mês" },
+          { value: "week", label: "Semana" },
           { value: "day", label: "Dia" },
         ]}
       />
       {m === "month" ? (
         <Field label="Mês">{(id) => <input id={id} type="month" className="field" value={monthValue} onChange={(e) => setMonthValue(e.target.value)} />}</Field>
+      ) : m === "week" ? (
+        <Field
+          label="Um dia da semana"
+          hint={isValidISODate(weekValue) ? `Semana de ${weekLabel(weekStart(weekValue))} (segunda a domingo).` : "Semanas vão de segunda a domingo."}
+        >
+          {(id) => <input id={id} type="date" className="field" value={weekValue} onChange={(e) => setWeekValue(e.target.value)} />}
+        </Field>
       ) : (
         <Field label="Dia">{(id) => <input id={id} type="date" className="field" value={dayValue} onChange={(e) => setDayValue(e.target.value)} />}</Field>
       )}
       <div className="grid grid-cols-2 gap-2">
-        <Button type="button" variant="secondary" onClick={() => onApply(m, m === "day" ? today() : currentMonth())}>
-          {m === "day" ? "Hoje" : "Este mês"}
+        <Button type="button" variant="secondary" onClick={() => onApply(m, now)}>
+          {m === "day" ? "Hoje" : m === "week" ? "Esta semana" : "Este mês"}
         </Button>
-        <Button type="button" disabled={!valid} onClick={() => onApply(m, m === "day" ? dayValue : `${monthValue}-01`)}>
+        <Button type="button" disabled={!valid} onClick={() => onApply(m, value)}>
           Ver
         </Button>
       </div>
