@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { AuthShell } from "@/components/auth-shell";
+import { CAPTCHA_MISSING, useCaptcha } from "@/components/captcha";
 import { Button, ErrorBox, Field } from "@/components/ui";
 import { PASSWORD_HINT, passwordProblem } from "@/lib/password";
 import { authErrorMessage, getSupabase } from "@/lib/supabase";
@@ -18,6 +19,7 @@ export default function CadastroPage() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [sentTo, setSentTo] = useState<string | null>(null);
+  const captcha = useCaptcha();
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -26,6 +28,7 @@ export default function CadastroPage() {
     const problem = passwordProblem(password);
     if (problem) return setError(problem);
     if (password !== confirm) return setError("As senhas não conferem.");
+    if (captcha.missing) return setError(CAPTCHA_MISSING);
     setLoading(true);
     const { data, error } = await getSupabase().auth.signUp({
       email: email.trim(),
@@ -33,9 +36,11 @@ export default function CadastroPage() {
       options: {
         data: { full_name: name.trim() },
         emailRedirectTo: `${window.location.origin}/inicio`,
+        captchaToken: captcha.token,
       },
     });
     setLoading(false);
+    captcha.reset();
     if (error) return setError(authErrorMessage(error));
     // Supabase não informa e-mail já cadastrado quando a confirmação está ativa:
     // devolve um usuário sem identidades.
@@ -84,6 +89,7 @@ export default function CadastroPage() {
             <input id={id} className="field" type="password" autoComplete="new-password" required value={confirm} onChange={(e) => setConfirm(e.target.value)} />
           )}
         </Field>
+        {captcha.element}
         <ErrorBox>{error}</ErrorBox>
         <Button type="submit" loading={loading} className="w-full">
           Criar conta

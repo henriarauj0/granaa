@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { AuthShell } from "@/components/auth-shell";
+import { CAPTCHA_MISSING, useCaptcha } from "@/components/captcha";
 import { FinancePhrase } from "@/components/finance-phrase";
 import { Button, ErrorBox, Field } from "@/components/ui";
 import { authErrorMessage, getSupabase } from "@/lib/supabase";
@@ -14,13 +15,20 @@ export default function EntrarPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const captcha = useCaptcha();
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+    if (captcha.missing) return setError(CAPTCHA_MISSING);
     setLoading(true);
-    const { error } = await getSupabase().auth.signInWithPassword({ email: email.trim(), password });
+    const { error } = await getSupabase().auth.signInWithPassword({
+      email: email.trim(),
+      password,
+      options: { captchaToken: captcha.token },
+    });
     setLoading(false);
+    captcha.reset();
     if (error) setError(authErrorMessage(error));
     else router.replace("/inicio");
   }
@@ -43,6 +51,7 @@ export default function EntrarPage() {
             Esqueci minha senha
           </Link>
         </div>
+        {captcha.element}
         <ErrorBox>{error}</ErrorBox>
         <Button type="submit" loading={loading} className="w-full">
           Entrar

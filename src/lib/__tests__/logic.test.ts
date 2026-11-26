@@ -319,3 +319,16 @@ describe("semana", () => {
     expect(weekLabel("2026-12-28")).toBe("28/12/2026 a 03/01/2027");
   });
 });
+
+describe("política de segurança de conteúdo", () => {
+  it("só libera o próprio app, o Supabase do projeto e o Turnstile", async () => {
+    const { contentSecurityPolicy } = await import("@/lib/csp");
+    const csp = contentSecurityPolicy({ supabaseUrl: "https://abcd.supabase.co/", dev: false });
+    const rule = (name: string) => csp.split("; ").find((d) => d.startsWith(name + " ")) ?? "";
+    expect(rule("connect-src")).toBe("connect-src 'self' https://abcd.supabase.co https://challenges.cloudflare.com");
+    expect(rule("frame-ancestors")).toBe("frame-ancestors 'none'");
+    expect(rule("object-src")).toBe("object-src 'none'");
+    expect(rule("script-src")).not.toContain("unsafe-eval");
+    expect(contentSecurityPolicy({ supabaseUrl: "não é url", dev: true })).toContain("connect-src 'self' https://challenges.cloudflare.com ws:");
+  });
+});

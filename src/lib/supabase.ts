@@ -44,6 +44,8 @@ export function authErrorMessage(error: { message?: string; code?: string } | nu
     return "Muitas tentativas em pouco tempo. Aguarde alguns minutos.";
   if (m.includes("invalid email") || code === "email_address_invalid") return "E-mail inválido.";
   if (code === "same_password") return "A nova senha precisa ser diferente da atual.";
+  if (code === "captcha_failed" || m.includes("captcha"))
+    return "A verificação de segurança falhou ou expirou. Conclua de novo e tente outra vez.";
   if (m.includes("failed to fetch") || m.includes("network")) return "Sem conexão. Verifique sua internet.";
   return error.message ?? "Algo deu errado. Tente novamente.";
 }

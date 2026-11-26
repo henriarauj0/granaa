@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { AuthShell } from "@/components/auth-shell";
+import { CAPTCHA_MISSING, useCaptcha } from "@/components/captcha";
 import { Button, ErrorBox, Field } from "@/components/ui";
 import { authErrorMessage, getSupabase } from "@/lib/supabase";
 
@@ -11,15 +12,19 @@ export default function RecuperarSenhaPage() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [sent, setSent] = useState(false);
+  const captcha = useCaptcha();
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+    if (captcha.missing) return setError(CAPTCHA_MISSING);
     setLoading(true);
     const { error } = await getSupabase().auth.resetPasswordForEmail(email.trim(), {
       redirectTo: `${window.location.origin}/nova-senha`,
+      captchaToken: captcha.token,
     });
     setLoading(false);
+    captcha.reset();
     if (error) setError(authErrorMessage(error));
     else setSent(true);
   }
@@ -37,6 +42,7 @@ export default function RecuperarSenhaPage() {
               <input id={id} className="field" type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
             )}
           </Field>
+          {captcha.element}
           <ErrorBox>{error}</ErrorBox>
           <Button type="submit" loading={loading} className="w-full">
             Enviar link

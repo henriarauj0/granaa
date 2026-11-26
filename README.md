@@ -98,7 +98,7 @@ npx supabase start
 cp .env.example .env.local
 ```
 
-Preencha o `.env.local` com a URL e a *publishable key* exibidas pelo `supabase start` e rode:
+Preencha o `.env.local` com a URL e a *publishable key* exibidas pelo `supabase start` e rode o comando abaixo. A variável `NEXT_PUBLIC_TURNSTILE_SITE_KEY` é opcional: com ela, as telas de entrar, criar conta e recuperar senha mostram a verificação anti-robô do Cloudflare Turnstile. Em produção, publique o app com essa variável antes de ligar o CAPTCHA no Supabase (Authentication → Bot and Abuse Protection), onde fica a chave secreta.
 
 ```bash
 npm run dev

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useAuth } from "@/components/auth-provider";
 import { AuthShell } from "@/components/auth-shell";
+import { CAPTCHA_MISSING, useCaptcha } from "@/components/captcha";
 import { Button, ErrorBox, Field, Spinner } from "@/components/ui";
 import { PASSWORD_HINT, passwordProblem } from "@/lib/password";
 import { authErrorMessage, getSupabase } from "@/lib/supabase";
@@ -81,14 +82,18 @@ function SendLinkToSelf({ email }: { email: string }) {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [sent, setSent] = useState(false);
+  const captcha = useCaptcha();
 
   async function send() {
     setError(null);
+    if (captcha.missing) return setError(CAPTCHA_MISSING);
     setLoading(true);
     const { error } = await getSupabase().auth.resetPasswordForEmail(email, {
       redirectTo: `${window.location.origin}/nova-senha`,
+      captchaToken: captcha.token,
     });
     setLoading(false);
+    captcha.reset();
     if (error) setError(authErrorMessage(error));
     else setSent(true);
   }
@@ -107,6 +112,7 @@ function SendLinkToSelf({ email }: { email: string }) {
       <p className="text-ink-2">
         Para trocar a senha, confirme que o e-mail é seu. Vamos mandar um link para <strong className="text-ink">{email}</strong>.
       </p>
+      {captcha.element}
       <ErrorBox>{error}</ErrorBox>
       <Button onClick={send} loading={loading} disabled={!email} className="w-full">
         Enviar link

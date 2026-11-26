@@ -1,61 +1,13 @@
 // Testa as migrações do banco num Postgres em memória (PGlite), com uma
 // simulação mínima do que o Supabase já traz (schema auth, papéis anon e
 // authenticated). Foco no atalho do Apple Pay, que aceita chamadas sem login.
-import { PGlite } from "@electric-sql/pglite";
 import assert from "node:assert/strict";
-import { readFileSync, readdirSync } from "node:fs";
-import { fileURLToPath } from "node:url";
 import { describe, it } from "vitest";
-
-/** Linha devolvida pelo banco; o teste confere os campos que usa. */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type Row = Record<string, any>;
-
-const MIG = fileURLToPath(new URL("../../../supabase/migrations", import.meta.url));
+import { U1, U2, createDb } from "./pglite";
 
 describe("banco: atalho do Apple Pay", () => {
   it("gera a chave, registra compras e respeita as permissões", async () => {
-    const db = new PGlite();
-
-    // --- simula o que o Supabase já traz pronto -------------------------------
-    await db.exec(`
-      create role anon nologin;
-      create role authenticated nologin;
-      create schema auth;
-      create table auth.users (id uuid primary key, email text, encrypted_password text, raw_user_meta_data jsonb default '{}');
-      create function auth.uid() returns uuid language sql stable as
-        $$ select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $$;
-      grant usage on schema auth to anon, authenticated;
-      grant usage on schema public to anon, authenticated;
-      grant execute on function auth.uid() to anon, authenticated;
-      -- default privileges como no Supabase: tabelas e funções novas liberadas para anon/authenticated
-      alter default privileges in schema public grant all on tables to anon, authenticated;
-      alter default privileges in schema public grant all on functions to anon, authenticated;
-    `);
-
-    for (const f of readdirSync(MIG).sort()) {
-      try {
-        await db.exec(readFileSync(`${MIG}/${f}`, "utf8").replace(/create extension if not exists pgcrypto;/i, "-- pgcrypto: já vem no Supabase"));
-      } catch (e) {
-        console.error("falha na migração", f, e instanceof Error ? e.message : e);
-        throw e;
-      }
-    }
-
-    const U1 = "11111111-1111-1111-1111-111111111111";
-    const U2 = "22222222-2222-2222-2222-222222222222";
-    await db.exec(`insert into auth.users (id, email) values ('${U1}', 'maria@exemplo.com'), ('${U2}', 'joao@exemplo.com');`);
-
-    const as = async (user: string | null, sql: string, params?: unknown[]) => {
-      await db.exec(`reset role; select set_config('request.jwt.claim.sub', '${user ?? ""}', false);`);
-      await db.exec(user ? "set role authenticated" : "set role anon");
-      try {
-        return await db.query<Row>(sql, params);
-      } finally {
-        await db.exec("reset role");
-      }
-    };
-    const one = async (sql: string, params?: unknown[]) => (await db.query<Row>(sql, params)).rows[0];
+    const { db, as, one } = await createDb();
 
     // dados da Maria: cartão "Nubank Ultravioleta" (fecha 3, vence 10) e conta "Inter"
     const carteira = await one(`select id from public.accounts where user_id = $1 and name = 'Carteira'`, [U1]);
@@ -191,6 +143,18 @@ describe("banco: atalho do Apple Pay", () => {
     assert.ok((await compra({ chave: outra, valor: "5", estab: "Banca" })).ok);
     await as(U1, `delete from public.shortcut_keys`);
     await assert.rejects(compra({ chave: outra, valor: "5" }), /Chave do atalho inválida/);
+
+    // limite de 30 chamadas por hora por chave (testes contam)
+    const limitada = (await as(U1, `select public.gerar_chave_atalho($1) as k`, [inter.id])).rows[0].k;
+    for (let i = 0; i < 30; i++) await compra({ chave: limitada, valor: "1", teste: true });
+    await assert.rejects(compra({ chave: limitada, valor: "1", teste: true }), /Limite de 30 compras por hora/);
+    await assert.rejects(compra({ chave: limitada, valor: "2", estab: "Excesso" }), /Limite de 30 compras por hora/);
+    assert.equal((await one(`select count(*)::int n from public.transactions where description = 'Excesso'`)).n, 0, "acima do limite não grava");
+    await db.query(`update public.shortcut_keys set janela_inicio = now() - interval '61 minutes' where user_id = $1`, [U1]);
+    assert.ok((await compra({ chave: limitada, valor: "1", teste: true })).ok, "passada uma hora, libera de novo");
+    const nova2 = (await as(U1, `select public.gerar_chave_atalho($1) as k`, [inter.id])).rows[0].k;
+    assert.equal((await one(`select janela_chamadas n from public.shortcut_keys where user_id = $1`, [U1])).n, 0, "chave nova zera a contagem");
+    assert.ok((await compra({ chave: nova2, valor: "1", teste: true })).ok);
 
     // reforços das tabelas
     await assert.rejects(

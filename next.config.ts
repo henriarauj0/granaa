@@ -1,10 +1,18 @@
 import type { NextConfig } from "next";
 
-// Cabeçalhos de segurança em todas as respostas. Não há script-src porque o Next
-// usa scripts inline para hidratar a página; o resto fecha o que não usamos.
+import { contentSecurityPolicy } from "./src/lib/csp";
+
+// Cabeçalhos de segurança em todas as respostas. A política (CSP) e os motivos de
+// cada regra estão em src/lib/csp.ts.
 const securityHeaders = [
-  // ninguém pode abrir o Granaa dentro de um iframe (clickjacking)
-  { key: "Content-Security-Policy", value: "frame-ancestors 'none'; base-uri 'self'; object-src 'none'; form-action 'self'" },
+  {
+    key: "Content-Security-Policy",
+    value: contentSecurityPolicy({
+      supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL,
+      dev: process.env.NODE_ENV === "development",
+    }),
+  },
+  // ninguém pode abrir o Granaa dentro de um iframe (clickjacking), também em navegadores antigos
   { key: "X-Frame-Options", value: "DENY" },
   { key: "X-Content-Type-Options", value: "nosniff" },
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
